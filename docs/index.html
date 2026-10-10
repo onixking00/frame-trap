@@ -2253,10 +2253,28 @@ const SY = y => GROUND - y;
 const G_GOLD = ['#fffbe0', '#ffc21a', '#e8342a'], G_ICE = ['#ffffff', '#9fe8ff', '#2a6bff'], G_RED = ['#ffffff', '#ff7a5c', '#a8121a'], G_STEEL = ['#ffffff', '#cfd6e6', '#6a7390'];
 
 let QCAP = MOBILE ? 1280 : 1600; // widest the canvas is allowed to be, in device pixels
+// The game is laid out for a 16:9 picture, W by H. On a wider screen (most phones held sideways) the canvas is wider
+// too: VW is its width in game units, OX the strip that adds on each side, WS how much a fight is scaled up to fill it.
+let VW = W, OX = 0, WS = 1;
 function fitCanvas() {
   const r = cv.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const w = clamp(Math.round(r.width * dpr), 480, QCAP);
-  if (cv.width !== w) { cv.width = w; cv.height = Math.round(w * H / W); }
+  const vw = r.height > 0 ? clamp(Math.round(H * r.width / r.height), W, 1280) : W;
+  VW = vw < W + 8 ? W : vw; OX = (VW - W) / 2; WS = VW / W;
+  const h = clamp(Math.round(r.height * dpr), 270, Math.round(QCAP * H / W)), w = Math.round(h * VW / H);
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+}
+// Menu screens keep their 16:9 layout in the middle; the side strips carry on the edge of the picture as a soft,
+// mirrored blur that fades to dark, so nothing readable is repeated there.
+const MARGIN = document.createElement('canvas'); MARGIN.width = 18; MARGIN.height = 54;
+function wideMargins() {
+  if (OX <= 0) return;
+  const k = cv.width / VW, x0 = Math.round(OX * k), x1 = Math.round((OX + W) * k), m = x0, h = cv.height, mx = MARGIN.getContext('2d');
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = true;
+  mx.setTransform(-1, 0, 0, 1, 18, 0); mx.drawImage(cv, x0, 0, m, h, 0, 0, 18, 54); ctx.drawImage(MARGIN, 0, 0, 18, 54, 0, 0, x0, h);
+  mx.drawImage(cv, x1 - m, 0, m, h, 0, 0, 18, 54); ctx.drawImage(MARGIN, 0, 0, 18, 54, x1, 0, cv.width - x1, h);
+  ctx.restore();
+  let g = ctx.createLinearGradient(0, 0, OX, 0); g.addColorStop(0, 'rgba(5,3,10,.85)'); g.addColorStop(1, 'rgba(5,3,10,.3)'); ctx.fillStyle = g; ctx.fillRect(0, 0, OX, H);
+  g = ctx.createLinearGradient(VW - OX, 0, VW, 0); g.addColorStop(0, 'rgba(5,3,10,.3)'); g.addColorStop(1, 'rgba(5,3,10,.85)'); ctx.fillStyle = g; ctx.fillRect(VW - OX, 0, OX, H);
 }
 function shade(hex, k) {
   const n = parseInt(hex.slice(1), 16), r = n >> 16, g = n >> 8 & 255, b = n & 255;
@@ -3390,6 +3408,8 @@ function renderFight() {
   const fin = G.state === 'ko' && (G.finish === 'super' || G.finish === 'ult') && G.phaseT < 105;
   ctx.save();
   if (G.shake > 0) ctx.translate(rnd(-G.shake, G.shake), rnd(-G.shake, G.shake) * 0.6);
+  // wide screens: the fight is scaled up about the floor line until it fills the width; the extra height comes off the sky
+  if (WS > 1) { ctx.translate(VW / 2, GROUND); ctx.scale(WS, WS); ctx.translate(-W / 2, -GROUND); }
   const zf = G.freeze > 0 && G.flashBy ? G.flashBy : null;
   const zx = zf ? clamp(W / 2 + zf.x - G.cam, 150, W - 150) : clamp(W / 2 + (a.x + b.x) / 2 - G.cam, 220, W - 220), zy = zf ? GROUND - 96 - Math.min(zf.y, 200) : GROUND - 60;
   ctx.translate(zx, zy); ctx.scale(z, z); ctx.translate(-zx, -zy);
@@ -3411,9 +3431,9 @@ function renderFight() {
   if (G.opts.boxes && G.mode === 'train') drawBoxes();
   ctx.restore();
   ctx.restore();
-  if (G.cine) { ctx.fillStyle = '#05030a'; ctx.fillRect(0, 0, W, 30); ctx.fillRect(0, H - 30, W, 30); }
-  if (G.flashA > 0.01) { ctx.fillStyle = `rgba(255,255,255,${Math.min(1, G.flashA)})`; ctx.fillRect(0, 0, W, H); }
-  if (!G.demo && !G.cine) drawHUD();
+  if (G.cine) { ctx.fillStyle = '#05030a'; ctx.fillRect(0, 0, VW, 30); ctx.fillRect(0, H - 30, VW, 30); }
+  if (G.flashA > 0.01) { ctx.fillStyle = `rgba(255,255,255,${Math.min(1, G.flashA)})`; ctx.fillRect(0, 0, VW, H); }
+  if (!G.demo && !G.cine) { ctx.save(); ctx.translate(OX, 0); drawHUD(); ctx.restore(); }
 }
 // ---------- match flow ----------
 const $ = id => document.getElementById(id);
@@ -3690,9 +3710,11 @@ const SC = {
     update() { step(); if (MI[0].start || MI[0].ok) { Snd.init(); G.demo = false; Snd.jingle('coin'); goScene('mode'); } else if (G.demoOver || G.sceneT > 1500) goScene('scores', { attract: 1 }); },
     draw() {
       if (G.f.length) renderFight();
-      ctx.fillStyle = 'rgba(8,4,16,.5)'; ctx.fillRect(0, 0, W, 66); ctx.fillRect(0, H - 50, W, 50);
+      ctx.fillStyle = 'rgba(8,4,16,.5)'; ctx.fillRect(0, 0, VW, 66); ctx.fillRect(0, H - 50, VW, 50);
+      ctx.save(); ctx.translate(OX, 0);
       big('FRAME TRAP', W / 2, 52, 46, ['#ffffff', '#ffd24a', '#e8342a']); px('DEMO', 26, 38, 10, C_CYAN);
       if (blinkOn()) px(coarse() ? 'TAP START' : 'PRESS START', W / 2, H - 20, 14, '#ffffff', 'center');
+      ctx.restore();
     }
   },
   result: {
@@ -3791,7 +3813,7 @@ const SC = {
 };
 
 function pauseOverlay() {
-  ctx.fillStyle = 'rgba(8,4,16,.74)'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(8,4,16,.74)'; ctx.fillRect(-OX, 0, VW, H);
   big('PAUSED', W / 2, 270, 110, G_STEEL);
   if (MOBILE) { px('TAP TO RESUME', W / 2, 322, 12, C_HP, 'center'); return; }
   px(BOUND.has('KeyP') ? 'ESC: RESUME' : 'ESC OR P: RESUME', W / 2, 320, 11, C_HP, 'center'); px('QUIT TO TITLE IS IN THE OPERATOR PANEL BELOW', W / 2, 350, 8, '#b9a9c9', 'center');
@@ -3799,14 +3821,16 @@ function pauseOverlay() {
 function render() { DRAWING = true; try { renderNow(); } finally { DRAWING = false; } }
 function renderNow() {
   fitCanvas();
-  const k = cv.width / W; ctx.setTransform(k, 0, 0, k, 0, 0);
-  ctx.fillStyle = INK; ctx.fillRect(0, 0, W, H); HOT.length = 0;
+  const k = cv.width / VW; ctx.setTransform(k, 0, 0, k, 0, 0);
+  ctx.fillStyle = INK; ctx.fillRect(0, 0, VW, H); HOT.length = 0;
   const s = G.scene, fightLike = s === 'fight' || s === 'demo';
-  ctx.save(); if (!fightLike && G.shake > 0) ctx.translate(rnd(-G.shake, G.shake), rnd(-G.shake, G.shake));
+  // fights fill the whole width themselves (renderFight); every other screen is drawn in the middle 16:9 area
+  ctx.save(); if (!fightLike) { ctx.translate(OX, 0); if (G.shake > 0) ctx.translate(rnd(-G.shake, G.shake), rnd(-G.shake, G.shake)); }
   SC[s].draw(G.sd); ctx.restore();
-  if (!fightLike && G.flashA > 0.01) { ctx.fillStyle = `rgba(255,255,255,${Math.min(1, G.flashA)})`; ctx.fillRect(0, 0, W, H); }
-  if (s === 'fight' && G.paused && !G.shot) pauseOverlay();
-  if (G.sceneT < 12) { ctx.fillStyle = `rgba(5,3,10,${1 - G.sceneT / 12})`; ctx.fillRect(0, 0, W, H); }
+  if (!fightLike) wideMargins();
+  if (!fightLike && G.flashA > 0.01) { ctx.fillStyle = `rgba(255,255,255,${Math.min(1, G.flashA)})`; ctx.fillRect(0, 0, VW, H); }
+  if (s === 'fight' && G.paused && !G.shot) { ctx.save(); ctx.translate(OX, 0); pauseOverlay(); ctx.restore(); }
+  if (G.sceneT < 12) { ctx.fillStyle = `rgba(5,3,10,${1 - G.sceneT / 12})`; ctx.fillRect(0, 0, VW, H); }
 }
 function tick() {
   readMenu(); G.sceneT++; touch.xl = 0;
@@ -3918,7 +3942,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) { key
 
 cv.addEventListener('pointerdown', e => {
   Snd.init();
-  const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
+  const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * VW - OX, y = (e.clientY - r.top) / r.height * H;
   if (NET.block) return;
   for (let i = HOT.length - 1; i >= 0; i--) { const h = HOT[i]; if (x >= h[0] && x <= h[0] + h[2] && y >= h[1] && y <= h[1] + h[3]) { if (NET.on) { if (h[5]) NET.tap = h[5]; } else h[4](); return; } }
   if (NET.on) { if (G.scene !== 'fight') { touch.b |= 2; setTimeout(() => { touch.b &= ~2; }, 90); } return; } // online, a tap on a menu screen is "confirm", sent as a button press
