@@ -1,5 +1,5 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"><meta name="description" content="Frame Trap: a six-button arcade fighting game. Play in your browser, alone or online."><meta name="theme-color" content="#0b0811"><title>Frame Trap</title><link rel="canonical" href="https://onixking00.github.io/frame-trap/"><meta property="og:type" content="website"><meta property="og:site_name" content="Frame Trap"><meta property="og:title" content="Frame Trap: arcade fighting, online"><meta property="og:description" content="Twelve fighters, combos, parries and supers. Play free in your browser, solo or online against a friend."><meta property="og:url" content="https://onixking00.github.io/frame-trap/"><meta property="og:image" content="https://onixking00.github.io/frame-trap/preview.jpg"><meta property="og:image:secure_url" content="https://onixking00.github.io/frame-trap/preview.jpg"><meta property="og:image:type" content="image/jpeg"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="Frame Trap logo with four of its fighters squaring up."><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Frame Trap: arcade fighting, online"><meta name="twitter:description" content="Twelve fighters, combos, parries and supers. Play free in your browser, solo or online against a friend."><meta name="twitter:image" content="https://onixking00.github.io/frame-trap/preview.jpg"><link rel="icon" href="favicon.ico" sizes="32x32"><link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="manifest" href="site.webmanifest">
-<script>(function () { try { var q = location.search; if (matchMedia("(pointer: coarse)").matches && !matchMedia("(any-pointer: fine)").matches && !/[?&]desktop=1/.test(q)) location.replace("m.html" + q); } catch (e) { } })();</script>
+<script>(function () { try { var q = location.search, ua = navigator.userAgent || "", touch = (navigator.maxTouchPoints || 0) > 0, small = Math.min(screen.width, screen.height) <= 820; var phone = /Android|iPhone|iPad|iPod|Mobile|Opera Mini|IEMobile/i.test(ua) || (touch && /Macintosh/.test(ua)) || (touch && small && matchMedia("(pointer: coarse)").matches); if (phone && !/[?&]desktop=1/.test(q)) { location.replace("m.html" + q); return; } if (touch) document.addEventListener("DOMContentLoaded", function () { var a = document.createElement("a"); a.href = "m.html" + q; a.textContent = "On a phone or tablet? Tap here for the touch version"; a.style.cssText = "position:fixed;left:0;right:0;top:0;z-index:50;padding:12px 10px;background:#ffc21a;color:#120d1c;font:600 17px/1.2 Arial,sans-serif;text-align:center;text-decoration:none"; document.body.appendChild(a); }); } catch (e) { } })();</script>
 </head><body>
 <title>Frame Trap</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Semi+Condensed:wght@400;600&family=IBM+Plex+Mono:wght@500&family=Press+Start+2P&display=swap">
@@ -31,7 +31,7 @@ h1 { flex: 0 1 auto; margin: 0; font: 400 clamp(30px, 6.4vw, 50px)/1 var(--displ
 .screen { position: relative; background: #000; border-radius: 12px; overflow: hidden; line-height: 0; box-shadow: 0 0 0 3px #000, 0 0 0 5px #2a2136, inset 0 0 40px rgba(0,0,0,.8); }
 .screen canvas { width: 100%; max-width: 100%; aspect-ratio: 16 / 9; display: block; touch-action: none; cursor: pointer; }
 .screen canvas:focus-visible { outline: 2px solid var(--cyan); outline-offset: -2px; }
-.screen::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; border-radius: inherit;
+.screen::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none; opacity: 0; border-radius: inherit;
   background: repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0 2px, rgba(0,0,0,.2) 2px 3px), radial-gradient(ellipse at center, rgba(0,0,0,0) 58%, rgba(0,0,0,.5) 100%), linear-gradient(115deg, rgba(255,255,255,.07) 0%, rgba(255,255,255,0) 30%); }
 .screen.crt-on::after { opacity: 1; animation: flick 5s steps(1) infinite; }
 @keyframes flick { 0%, 100% { opacity: 1; } 47% { opacity: .93; } 49% { opacity: 1; } 83% { opacity: .96; } 84% { opacity: 1; } }
@@ -4148,6 +4148,22 @@ if (MOBILE) {
   if (!('speechSynthesis' in window)) $('voiceBtn').hidden = true;
   if (inApp || !document.documentElement.requestFullscreen) $('mfsBtn').hidden = true;
   $('mfsBtn').addEventListener('click', () => { try { const p = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen({ navigationUI: 'hide' }); if (p && p.then) p.then(() => { try { screen.orientation.lock('landscape').catch(() => { }); } catch (e) { } }).catch(() => { }); } catch (e) { } closeDrawer(); });
+  // Held upright, the phone shows a "plays sideways" screen. Tapping the button goes full screen and turns the picture
+  // sideways even when the phone's rotation is locked (Android). iPhones cannot do that, so they get instructions.
+  {
+    const rotBtn = $('rotBtn'), rotMsg = $('rotMsg'), ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && (navigator.maxTouchPoints || 0) > 1);
+    const el = document.documentElement, goFs = el.requestFullscreen || el.webkitRequestFullscreen, canLock = !!(screen.orientation && screen.orientation.lock);
+    const help = () => { rotMsg.innerHTML = ios ? 'Turn the phone sideways. If the picture does not turn with it, rotation is locked: swipe down from the <b>top-right corner</b> of the screen and tap the <b>padlock with an arrow round it</b>, then turn the phone again.' : 'Turn the phone sideways. If the picture does not turn with it, swipe down from the top of the screen and switch <b>Auto-rotate</b> on, then turn the phone again.'; };
+    if (ios || !goFs || !canLock) { rotBtn.hidden = true; help(); }
+    rotBtn.addEventListener('click', () => {
+      Snd.init();
+      try {
+        const p = goFs.call(el, { navigationUI: 'hide' });
+        const lock = () => screen.orientation.lock('landscape').catch(() => { help(); });
+        if (p && p.then) p.then(lock).catch(() => { help(); }); else lock();
+      } catch (e) { help(); }
+    });
+  }
   // the Android back button: close the drawer, pause a fight, step back through menus, and leave from the title
   window.FT_back = () => {
     if (G.net || NET.block) { if (window.FT_online) window.FT_online.menu(); return 'ok'; }
@@ -4328,7 +4344,7 @@ const profileOf = p => ({ name: p && NAME_OK.test(p.name || '') ? p.name : 'Figh
 function onlineCss() {
   const A = '"Anton", "Haettenschweiler", "Arial Narrow Bold", Impact, sans-serif', M = '"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace';
   const s = document.createElement('style'); s.textContent = `
-#online { position: fixed; inset: 0; z-index: 8; display: flex; align-items: center; justify-content: center; padding: 10px; background: rgba(8,5,14,.92); font: 400 16px/1.4 "Barlow Semi Condensed", "Arial Narrow", Arial, sans-serif; color: #f2ecdf; -webkit-user-select: text; user-select: text; touch-action: manipulation; }
+#online { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 8; display: flex; align-items: center; justify-content: center; padding: 10px; background: rgba(8,5,14,.92); font: 400 16px/1.4 "Barlow Semi Condensed", "Arial Narrow", Arial, sans-serif; color: #f2ecdf; -webkit-user-select: text; user-select: text; touch-action: manipulation; }
 #online[hidden] { display: none; }
 #online * { box-sizing: border-box; }
 .on-card { width: min(700px, 100%); max-height: 100%; overflow-y: auto; background: #17111f; border: 1px solid #33263f; border-top: 4px solid #ffc21a; padding: 14px 18px 18px; }
@@ -4488,7 +4504,7 @@ if (onlineShown()) MODES.push(['online', 'ONLINE', 'Sign in, fight a friend by r
 // (some mobile networks block it), inputs are passed through the database instead: slower, but it still plays.
 const iceCfg = () => ({ iceServers: window.FT_ICE || [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }] });
 const roomCode = () => { const A = 'BCDFGHJKLMNPQRSTVWXZ'; let s = ''; for (let i = 0; i < 4; i++) s += A[(Math.random() * A.length) | 0]; return s; };
-const BUILD = '2524599696';
+const BUILD = '1106474984';
 const seat = () => ({ uid: ON.user.uid, name: ON.me.name, v: BUILD });
 const iceDone = pc => new Promise(res => { if (pc.iceGatheringState === 'complete') return res(); const t = setTimeout(res, 2500); pc.addEventListener('icegatheringstatechange', () => { if (pc.iceGatheringState === 'complete') { clearTimeout(t); res(); } }); });
 
@@ -4653,6 +4669,7 @@ window.FT_online = { open: onlineOpen, close: onlineClose, menu: onlineMenu, sta
   const m = /[?&]room=([A-Za-z]{4})(?:&|$)/.exec(location.search);
   if (m && onlineAvail()) { ON.wantRoom = m[1].toUpperCase(); setTimeout(() => { if (G.scene === 'title' || G.scene === 'demo') goScene('mode'); onlineOpen(); }, 500); }
 }
+{ const boot = $('boot'); if (boot) boot.remove(); } // everything loaded and ran: remove the loading screen
 })();
 </script>
 </body></html>
