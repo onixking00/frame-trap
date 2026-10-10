@@ -1,0 +1,80 @@
+# Builds FrameTrap.apk on GitHub every time something in this repository changes.
+# When it finishes, the APK is on the repository's "Releases" page.
+name: Build APK
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-apk
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # Works whether the project files were uploaded as they are, inside a folder, or as the one .zip file.
+      # If there are several .zip files, the one uploaded most recently is used.
+      - name: Find the project
+        run: |
+          if [ ! -f settings.gradle ]; then
+            newest=""; best=0
+            for z in *.zip; do
+              if [ -f "$z" ]; then
+                t=$(git log -1 --format=%ct -- "$z"); t=${t:-0}
+                if [ "$t" -ge "$best" ]; then best=$t; newest=$z; fi
+              fi
+            done
+            if [ -n "$newest" ]; then echo "Using $newest"; unzip -q -o "$newest" -d unpacked; fi
+          fi
+          found=$(find . -name settings.gradle -not -path './.git/*' | head -n 1)
+          if [ -z "$found" ]; then
+            echo "::error::Could not find the Android project. Upload frame-trap-android.zip to the repository."
+            exit 1
+          fi
+          echo "PROJ=$(dirname "$found")" >> "$GITHUB_ENV"
+
+      - name: Fetch fonts
+        run: sh "$PROJ/tools/fetch-fonts.sh" || echo "::warning::Some fonts could not be downloaded; the game will use the phone's font for that text."
+
+      - name: Get Gradle
+        run: |
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/gradle.zip" https://services.gradle.org/distributions/gradle-8.9-bin.zip
+          unzip -q "$RUNNER_TEMP/gradle.zip" -d "$RUNNER_TEMP"
+
+      - name: Build the APK
+        run: |
+          cd "$PROJ"
+          "$RUNNER_TEMP/gradle-8.9/bin/gradle" --no-daemon --stacktrace assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/FrameTrap.apk"
+
+      - uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: FrameTrap-apk
+          path: FrameTrap.apk
+
+      - name: Put the APK on the Releases page
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "build-${{ github.run_number }}" FrameTrap.apk
+          --repo "${{ github.repository }}"
+          --target "${{ github.sha }}"
+          --title "Frame Trap build ${{ github.run_number }}"
+          --notes "Download FrameTrap.apk below and open it on an Android phone to install."
