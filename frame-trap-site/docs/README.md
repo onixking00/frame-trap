@@ -2,8 +2,8 @@
 
 A six-button arcade fighting game that plays in the browser: https://onixking00.github.io/frame-trap/
 
-This repository is the whole site, hosted free on GitHub Pages. `index.html` is the game on computers, `m.html` on
-phones and tablets (phones are sent there automatically). Arcade, Versus, VS CPU and Training work on their own; the
+This repository is the whole site, hosted free on GitHub Pages. `index.html` is the game for every
+device: it fills the screen, and shows touch controls on phones and tablets. Arcade, Versus, VS CPU and Training work on their own; the
 **ONLINE** mode (accounts, profile pictures, rooms, find-a-match, leaderboard) uses the Firebase project described
 below.
 
@@ -25,9 +25,9 @@ file goes missing. They are not secret: they only say which project the game tal
 
 ## 2. Hosting on GitHub Pages
 
-- The site is this `docs` folder, switched on under **Settings > Pages**: Source **Deploy from a branch**, branch
-  **main**, folder **/docs**. The repository must be **Public** for this to work on a free account.
-- To update the game, drag the new `docs` folder onto **Add file > Upload files** and commit; it replaces the old one. The live site
+- The site is switched on under **Settings > Pages**: Source **Deploy from a branch**, branch **main**, folder
+  **/ (root)**. The repository must be **Public** for this to work on a free account.
+- To update the game, upload the new files over the old ones (**Add file > Upload files**) and commit. The live site
   follows within a minute or two. There is no limit on how often you can do this.
 - In Firebase, **Authentication > Settings > Authorized domains** must include `onixking00.github.io`.
 - The link preview (WhatsApp and others) is built for the address above. If the repository is renamed or moved, the
@@ -66,8 +66,8 @@ who types it and presses **Join room**. Or press **Find a match** on both.
 
 | File | What it is |
 | --- | --- |
-| `index.html` | The game for computers (keyboard, gamepad) |
-| `m.html` | The game for phones and tablets (touch controls, layout editor) |
+| `index.html` | The game, for computers, phones and tablets (keyboard, gamepad, touch) |
+| `m.html` | The old phone address; it forwards to `index.html` so old links keep working |
 | `preview.jpg` | The picture WhatsApp and other apps show when the link is shared |
 | `favicon.ico`, `favicon.svg`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png`, `site.webmanifest` | The site icon, for browser tabs and phone home screens |
 | `fb-config.js` | Your Firebase settings (already filled in) |
