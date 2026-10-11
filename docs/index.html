@@ -1343,6 +1343,18 @@ for (const k in CHARS) { const c = CHARS[k]; c.walk *= 1.15; c.back *= 1.15; c.p
 const DK = { kai: 0.92, axel: 0.92, tyrone: 0.93, kira: 0.94, onyx: 0.97, rima: 1.08, jason: 1.06, raz: 1.05, sally: 1.03 };
 for (const k in DK) if (CHARS[k]) CHARS[k].dk = DK[k];
 CHARS.axel.hp = 1000; CHARS.tyrone.hp = 1010;   // were 1040 each
+// Supers and ultimates that play as a scripted sequence run slower, so every blow can be read. The quickest flurries
+// (a hit every 4 or 5 frames) are stretched the most, up to 1.6 times; the rest by 1.3. Damage is untouched.
+for (const k in CHARS) for (const id in CHARS[k].moves) {
+  const c = CHARS[k].moves[id].cine; if (!c || c.slowed) continue; c.slowed = 1;
+  const hits = c.script.filter(e => e.hit).map(e => e.t), gaps = hits.slice(1).map((t, i) => t - hits[i]).sort((a, b) => a - b);
+  const s = clamp(8 / (gaps.length ? gaps[gaps.length >> 1] : 12), 1.3, 1.6);
+  c.dur = Math.round(c.dur * s);
+  for (const e of c.script) {
+    if (e.slowed) continue; e.slowed = 1; e.t = Math.max(1, Math.round(e.t * s));
+    if (e.rate) e.rate = 1 - Math.pow(1 - e.rate, 1 / s); if (e.beam) e.beam = Math.round(e.beam * s); if (e.throwOrb) e.throwOrb = Math.round(e.throwOrb * s);
+  }
+}
 // ---------- game state ----------
 const G = {
   mode: 'cpu', state: 'menu', f: [], projs: [], fx: [], msgs: [], frame: 0, timer: 99, tick: 0, round: 1, wins: [0, 0],
@@ -5268,7 +5280,7 @@ if (onlineShown()) { const at = MODES.findIndex(m => m[0] === 'settings'); MODES
 // (some mobile networks block it), inputs are passed through the database instead: slower, but it still plays.
 const iceCfg = () => ({ iceServers: window.FT_ICE || [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }] });
 const roomCode = () => { const A = 'BCDFGHJKLMNPQRSTVWXZ'; let s = ''; for (let i = 0; i < 4; i++) s += A[(Math.random() * A.length) | 0]; return s; };
-const BUILD = '1536059967';
+const BUILD = '1878838495';
 const seat = () => ({ uid: ON.user.uid, name: ON.me.name, v: BUILD });
 const iceDone = pc => new Promise(res => { if (pc.iceGatheringState === 'complete') return res(); const t = setTimeout(res, 2500); pc.addEventListener('icegatheringstatechange', () => { if (pc.iceGatheringState === 'complete') { clearTimeout(t); res(); } }); });
 
