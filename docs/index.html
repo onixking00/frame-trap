@@ -1661,14 +1661,18 @@ function updateFighter(f) {
   f.pose = lerpPose(f.pose, targetPose(f), poseRate(f));
 }
 
-function poseRate(f) { return f.st === 'atk' ? 0.55 : f.st === 'cine' || f.st === 'cined' ? 0.6 : f.st === 'hit' || f.st === 'blk' || f.st === 'lnc' ? 0.6 : f.st === 'air' ? 0.4 : 0.32; }
+function poseRate(f) { if (f.pr) return f.pr; return f.st === 'atk' ? 0.55 : f.st === 'cine' || f.st === 'cined' ? 0.6 : f.st === 'hit' || f.st === 'blk' || f.st === 'lnc' ? 0.6 : f.st === 'air' ? 0.4 : 0.32; }
 function lerpPose(a, b, r) {
   const o = new Array(12); for (let i = 0; i < 10; i++) o[i] = a[i] + (b[i] - a[i]) * r;
   let ra = a[10]; const rb = b[10]; while (ra - rb > 180) ra -= 360; while (ra - rb < -180) ra += 360;
   o[10] = ra + (rb - ra) * Math.max(r, 0.5); o[11] = b[11]; return o;
 }
+// A fighter with its own animation set (ch.A) is asked first: A.pz is the pose table with that fighter's own versions
+// of the shared poses, A.pose(f, PZ) may answer for any state (movement cycles, timed reactions) or return null, and an
+// attack's keys may carry their own blend speed, [frame, pose, speed], so strikes snap out and recoveries ease back.
 function targetPose(f) {
-  const PZ = POSES;
+  const A = f.ch.A, PZ = A ? A.pz : POSES; f.pr = 0;
+  if (A) { const p = A.pose(f, PZ); if (p) return p; }
   switch (f.st) {
     case 'idle': {
       if (f.parryT > 0) return PZ.parry;
@@ -1689,8 +1693,8 @@ function targetPose(f) {
     case 'atk': {
       const m = f.mv, base = !grounded(f) ? (f.vy > -2 ? PZ.jump : PZ.fall) : m.cr ? PZ.crouch : PZ[f.ch.stance] || PZ.idle;
       if (f.mt >= m.animEnd && !(m.rise || m.hold)) return base;
-      let key = m.anim[0][1]; for (const k of m.anim) { if (f.mt >= k[0]) key = k[1]; else break; }
-      let p = PZ[key];
+      let key = m.anim[0][1], pr = m.anim[0][2]; for (const k of m.anim) { if (f.mt >= k[0]) { key = k[1]; pr = k[2]; } else break; }
+      let p = PZ[key]; f.pr = pr || 0;
       if (m.flipRot && f.mt >= m.su && !grounded(f)) { p = p.slice(); p[10] = Math.min(330, (f.mt - m.su) * m.flipRot); }
       return p;
     }
@@ -2456,11 +2460,11 @@ function rig(f, ov) {
 // per-frame secondary motion: limb history for trails, cloth chains, afterimages
 const OPEN = { fb: 1, afb: 1, afbW: 1, palm: 1, apalm: 1, grab: 1, grabW: 1, agrab: 1, throwA: 1, slamA: 1, splash: 1, parry: 1, blockS: 1, blockC: 1, win: 1, winC: 1, thrown: 1, launch: 1, down: 1, dizzy: 1 };
 function mkChains(f) {
-  const L = f.ch.look, mk1 = (n, len, w, col, at, dx, dy) => ({ pts: null, n, len, w, col, at, dx, dy });
-  if (LX[L] && LX[L].chains) return LX[L].chains(mk1);
+  const L = f.ch.look, mk1 = (n, len, w, col, at, dx, dy) => ({ pts: null, n, len, w, col, at, dx, dy, sw: 0.8 });
+  if (LX[L] && LX[L].chains) return LX[L].chains(mk1).map(ch => (ch.sw == null ? Object.assign(ch, { sw: 0.8 }) : ch));
   if (L === 'band') return [mk1(5, 8, 4, 'acc', 'hd', -15, -5), mk1(5, 6.5, 4, 'acc', 'hd', -15, -1), mk1(4, 7, 5, 'acc', 'waist', 13, 3)];
   if (L === 'tail') return [mk1(7, 9, 7, 'acc', 'sh', -10, -6), mk1(6, 8, 9, 'hair', 'hd', -15, -6)];
-  if (L === 'onyx') return [Object.assign(mk1(6, 12, 23, 'top', 'hip', -8, 5), { back: 1, trim: 1 }), Object.assign(mk1(8, 10, 6, 'acc', 'hip', -14, 2), { back: 1 }), Object.assign(mk1(5, 12, 15, 'top', 'hip', 9, 5), { trim: 1 })];
+  if (L === 'onyx') return [Object.assign(mk1(6, 12, 23, 'top', 'hip', -8, 5), { back: 1, trim: 1, sw: 0.8 }), Object.assign(mk1(8, 10, 6, 'acc', 'hip', -14, 2), { back: 1, sw: 0.84 }), Object.assign(mk1(5, 12, 15, 'top', 'hip', 9, 5), { trim: 1, sw: 0.78 })];
   return [mk1(4, 9, 9, 'acc', 'hip', -11, 4)];
 }
 function animKey(f) {
@@ -2474,8 +2478,17 @@ function relaxChains(f, J) { // cloth: each link follows the one before it, with
     const a = J[ch.at], ax = a[0] + J.fx * ch.dx * J.s, ay = a[1] + ch.dy * J.s, len = ch.len * J.s;
     if (!ch.pts) { ch.pts = []; for (let i = 0; i < ch.n; i++) ch.pts.push([ax - J.fx * i * len * 0.3, ay + i * len * 0.9]); }
     ch.pts[0][0] = ax; ch.pts[0][1] = ay;
+    const sw = ch.sw || 0, pv = sw ? ch.pv || (ch.pv = ch.pts.map(q => q.slice())) : null;
     for (let i = 1; i < ch.n; i++) {
-      const q = ch.pts[i], pr = ch.pts[i - 1]; q[1] += 1.7 * J.s; q[0] -= (J.fx * 0.9 + Math.sin(G.frame * 0.2 + i) * 0.5) * J.s;
+      const q = ch.pts[i], pr = ch.pts[i - 1];
+      if (sw) { // cloth with weight: it keeps some of last frame's motion, so it trails a lunge and swings on after a stop
+        let vx = (q[0] - pv[i][0]) * sw, vy = (q[1] - pv[i][1]) * sw; if (Math.abs(vx) + Math.abs(vy) > 60) vx = vy = 0;
+        pv[i][0] = q[0]; pv[i][1] = q[1]; q[0] += vx; q[1] += vy;
+        q[1] += 1.05 * J.s; q[0] -= (J.fx * 0.5 + Math.sin(G.frame * 0.13 + i * 0.9) * 0.16) * J.s;
+        // a little stiffness, so it hangs in a curve instead of folding up: each link leans toward carrying on the line before it
+        const p2 = i > 1 ? ch.pts[i - 2] : null, tx = p2 ? pr[0] * 2 - p2[0] : pr[0] - J.fx * len * 0.56, ty = p2 ? pr[1] * 2 - p2[1] : pr[1] + len * 0.83;
+        q[0] += (tx - q[0]) * 0.13; q[1] += (ty - q[1]) * 0.13;
+      } else { q[1] += 1.7 * J.s; q[0] -= (J.fx * 0.9 + Math.sin(G.frame * 0.2 + i) * 0.5) * J.s; }
       const dx = q[0] - pr[0], dy = q[1] - pr[1], d = Math.hypot(dx, dy) || 1;
       if (d > len) { q[0] = pr[0] + dx / d * len; q[1] = pr[1] + dy / d * len; }
       if (q[1] > J.foot + 2) q[1] = J.foot + 2;
@@ -2484,7 +2497,9 @@ function relaxChains(f, J) { // cloth: each link follows the one before it, with
 }
 function postFx(f) {
   const J = f.J = rig(f);
-  f.open = !!OPEN[animKey(f)] || (f.st === 'idle' && !f.crouch && !!f.ch.openIdle);
+  const A = f.ch.A, op = (A && A.open && A.open(f)) || OPEN[animKey(f)]; // 1: both hands open; 2: only the near (lead) hand
+  f.open = op === 1 || (f.st === 'idle' && !f.crouch && !!f.ch.openIdle);
+  f.openN = op === 2 || (!op && !!A && !!A.nearOpen && !!A.nearOpen[f.st]);
   for (const k in f.lh) { const a = f.lh[k]; a.push(J[k]); if (a.length > 7) a.shift(); }
   relaxChains(f, J);
   for (const g of f.ghosts) g.life--;
@@ -2569,7 +2584,7 @@ function mockF(key, face = 1, o = {}) {
 function drawArt(mf, x, y, scale, poseKey, bob = 0) {
   if (poseKey === 'idle') { poseKey = mf.ch.stance || 'idle'; if (mf.ch.openIdle) OPEN[poseKey] = 1; }
   const p = POSES[poseKey].slice(); if (bob) { const b = Math.sin(G.frame * 0.09 + x); p[0] += b * 1.5; p[3] += b * 4; p[5] += b * 4; }
-  mf.open = !!OPEN[poseKey]; const J = rig(mf, { x, y, scale, pose: p }); relaxChains(mf, J); drawBody(mf, J, null);
+  mf.open = OPEN[poseKey] === 1; mf.openN = OPEN[poseKey] === 2; const J = rig(mf, { x, y, scale, pose: p }); relaxChains(mf, J); drawBody(mf, J, null);
 }
 const PORT = {};
 function portrait(f) { // cached head-and-shoulders tile
@@ -2775,7 +2790,7 @@ function drawBody(f, J, flat) {
     seg(J.ao, e, B.ua * 1.1, B.ua * 0.8, B.armU, far, B.ua * (skinU ? 0.2 : 0.13), B.ua * 0.12, 0.42);
     seg(e, h, B.ua * 0.8, B.fa * 0.72, B.armF || 'skin', far, B.fa * 0.18, B.fa * 0.06, 0.3);
     later(() => { if (BX && BX.arm) BX.arm(D, e, h, far); else if (look === 'band') band(e, h, 0.6, 0.92, B.fa * 0.86, 'acc', far); else if (look === 'tail') band(e, h, 0.72, 0.9, B.fa * 0.84, 'acc', far); else if (look === 'onyx') band(e, h, 0.72, 0.96, B.fa * 0.9, 'acc', far); else band(e, h, 0.28, 0.84, B.fa * 1.02, 'acc', far); });
-    handIt(h, e, col(B.hand, far), s * (B.hs || (look === 'bald' ? 1.12 : look === 'tail' ? 0.9 : 1)), f.open && !B.fist);
+    handIt(h, e, col(B.hand, far), s * (B.hs || (look === 'bald' ? 1.12 : look === 'tail' ? 0.9 : 1)), (f.open || (!far && f.openN)) && !B.fist);
   };
   const leg = (k, ft, toe, far) => {
     const skinT = B.thigh === 'skin', skinS = B.shin === 'skin';
@@ -3135,6 +3150,373 @@ function drawExtras(f, J) {
     ctx.globalAlpha = 0.5; ctx.drawImage(glowSprite(el[2]), -46 * s, -30 * s, 60 * s, 60 * s);
     ctx.restore();
   }
+}
+// ---------- animation kit: one fighter's movement, reactions, win and intro, built from their stance and a style ----------
+// The frame data never changes here: this only decides which pose is shown on which frame.
+const akEase = k => k * k * (3 - 2 * k), AKR = Math.PI / 180, TUCK = [74, -30, 34, -70];
+const akMix = (a, b, k) => { const o = a.slice(); for (let i = 0; i < 10; i++) o[i] = a[i] + (b[i] - a[i]) * k; o[10] = b[10]; o[11] = k < 0.5 ? a[11] : b[11]; return o; };
+const akSeq = (t, keys) => { // keys: [time, pose] in order; eased blend between neighbours
+  let i = 0; while (i < keys.length - 1 && t >= keys[i + 1][0]) i++;
+  if (i >= keys.length - 1) return keys[keys.length - 1][1].slice();
+  return akMix(keys[i][1], keys[i + 1][1], akEase(clamp((t - keys[i][0]) / (keys[i + 1][0] - keys[i][0]), 0, 1)));
+};
+const akHip = p => Math.max(40 * Math.cos(p[6] * AKR) + 42 * Math.cos(p[7] * AKR), 40 * Math.cos(p[8] * AKR) + 42 * Math.cos(p[9] * AKR));
+// one leg of a walk or run: the thigh swings, and the knee folds while the foot is travelling forward
+const akStride = (p, i, th, amp, base, fold) => { const sw = Math.max(0, Math.cos(th)); p[i] = base + amp * Math.sin(th); p[i + 1] = p[i] - 8 - fold * sw; };
+// how fast the legs must cycle for the feet to keep pace with the ground
+const akPace = (speed, amp, size) => speed * Math.PI / (164 * size * Math.sin(amp * AKR));
+Object.assign(POSES, {
+  kHitH1: P(-30, -24, [10, 60, -50, -20], [26, 4, -24, -46]), kHitH2: P(-14, -8, [0, 50, -30, -30], [20, 0, -22, -40]),
+  kHitL1: P(36, 26, [30, 90, 10, 70], [34, -4, -8, -36]), kHitL2: P(22, 14, [24, 80, -6, 40], [30, -2, -10, -36]),
+  kHitC1: P(2, -26, [-30, 30, -50, 10], LC), kBlk1: P(-12, 2, [58, 170, 68, 174], [24, 0, -18, -42]), kBlkC1: P(6, -4, [58, 170, 68, 174], LC),
+  kKnee: P(30, 10, [20, 60, -10, 30], [88, -70, 30, -86]), kDip: P(14, 6, [30, 110, 40, 110], [44, -12, 12, -44])
+});
+
+function animKit(key, S = {}) {
+  const c = CHARS[key], Z = POSES, st = Z[c.stance] || Z.idle, SA = st.slice(2, 6), SL = st.slice(6, 10), fl = st[11] >= 0, sz = c.size || 1;
+  const W = Object.assign({ amp: 22, fold: 40, lf: 6, lb: -4, sw: 0, split: 0 }, S.walk), R = Object.assign({ lean: 28, arms: 'pump', amp: 46 }, S.run);
+  const put = (n, p) => { Z[key + '_' + n] = p; return p; };
+  const back = [-40, -66, -52, -78], dA = R.arms === 'back' ? [[-20, -50, -34, -66], back] : R.arms === 'pump' || R.arms === 'heavy' ? [[50, 140, -30, 50], [64, 150, -44, 30]] : [SA, SA];
+  const D1 = put('d1', P(20, -8, dA[0], [62, 2, -38, -52])), D2 = put('d2', P(36, -20, dA[1], [56, 22, -50, -74])), D3 = put('d3', P(12, -6, SA, [46, -8, -20, -42]));
+  const B1 = put('b1', P(-14, 4, SA, [36, 14, -4, -30])), B2 = put('b2', P(-4, 0, SA, [46, -34, 8, -56])), B3 = put('b3', P(8, -2, SA, [40, -14, -16, -48]));
+  const JU = put('ju', P(4, -8, [Math.min(SA[0] + 14, 120), Math.min(SA[1] + 30, 170), SA[2], SA[3]], [16, -8, -6, -30])), TU = put('tu', P(10, -2, SA, TUCK)), FA = put('fa', P(-4, 2, S.fall || [84, 144, -66, -24], [30, 6, -6, -32]));
+  const LD = put('ld', P(18, 4, SA, [56, -22, 22, -62])), CR = put('cr', P(18, -8, S.crouch || SA, LC)), DIP = put('dip', P(14, 6, SA, [44, -12, 12, -44]));
+  const rf = akPace(c.walk, W.amp, sz), rb = akPace(c.back, W.amp, sz), rr = akPace(c.dashV * 0.88, R.amp, sz) / 1.6, bk = (c.bob || 1) * (S.breath || 1), brR = 0.072 * (c.bobRate || 1);
+
+  function idle(f) {
+    const t = G.frame + f.i * 37; let p;
+    if (f.run) { // running
+      const th = f.walkT * rr, a = Math.sin(th), b = Math.sin(th * 2); p = P(R.lean, -R.lean * 0.55, SA, SL);
+      if (fl) { p[6] = -14; p[7] = -34; p[8] = -26; p[9] = -48; p[11] = st[11] - 4 + b * 2; } else { akStride(p, 6, th, R.amp, 14, 70); akStride(p, 8, th + Math.PI, R.amp, 14, 70); }
+      if (R.arms === 'back') { p[2] = back[0] + b * 5; p[3] = back[1] + b * 7; p[4] = back[2] - b * 5; p[5] = back[3] - b * 6; }
+      else if (R.arms === 'pump') { p[2] = 8 - a * 40; p[3] = p[2] + 86; p[4] = 8 + a * 40; p[5] = p[4] + 86; }
+      else if (R.arms === 'heavy') { p[2] = 26 - a * 20; p[3] = p[2] + 64; p[4] = 10 + a * 20; p[5] = p[4] + 60; }
+      else { p[3] += b * 6; p[5] += b * 6; }
+      p[0] += b * 2;
+    } else if (f.walkT) { // walking: forward and back each at their own pace
+      const fw = f.walkT > 0 ? 1 : -1, th = f.walkT * (fw > 0 ? rf : rb), s1 = Math.sin(th), b = Math.sin(th * 2); p = st.slice();
+      if (fl) { p[0] += fw * 9; p[6] -= fw * 8; p[7] -= fw * 12; p[8] -= fw * 6; p[9] -= fw * 10; p[11] += Math.sin(t * 0.06) * 2.5; }
+      else { akStride(p, 6, th, W.amp, 6 + W.split, W.fold); akStride(p, 8, th + Math.PI, W.amp, 6 - W.split, W.fold); p[0] += fw > 0 ? W.lf : W.lb; p[1] += (fw > 0 ? -W.lf : -W.lb) * 0.6 + b * 1.2; }
+      if (W.sw) { p[2] -= s1 * W.sw; p[3] -= s1 * W.sw * 0.8; p[4] += s1 * W.sw; p[5] += s1 * W.sw * 0.8; } else { p[3] += b * 3; p[5] += b * 3; }
+    } else { // standing
+      p = st.slice();
+      if (S.mech) { const cy = t % 96; p[1] += cy < 6 ? 7 : cy < 14 ? -5 : 0; p[3] += cy > 48 && cy < 54 ? 6 : 0; } // a machine does not breathe: it ticks
+      else {
+        const br = Math.sin(t * brR), br2 = Math.sin(t * brR - 1.1), bn = S.bounce || 0, hop = bn ? (Math.sin(t * 0.21) + 1) * 0.5 : 0, kf = (br + 1) * 1.4 + hop * bn * 7;
+        p[0] += br * 1.3 * bk + (S.sway ? Math.sin(t * 0.045) * S.sway : 0); p[1] += br2 * 1.5 + Math.sin(t * 0.023) * 2;
+        p[2] += br2 * 2 * bk; p[3] += br * 4 * bk + hop * bn * 5; p[4] += br * 1.6 * bk; p[5] += br2 * 3 * bk + hop * bn * 5;
+        if (fl) p[11] += Math.sin(t * 0.05) * 3; else { p[6] += kf; p[7] -= kf * 1.6; p[8] -= kf * 0.6; p[9] -= kf * 1.2; }
+      }
+      if (S.fl) { const n = S.flLen || 60, cy = t % (S.flEvery || 420); if (cy < n) S.fl(p, Math.sin(cy / n * Math.PI), cy / n); }
+    }
+    const sq = clamp((1 - f.sq) * 7, 0, 1); // just landed: the knees take it
+    return sq > 0.02 && !fl ? akMix(p, LD, sq) : p;
+  }
+  function air(f) {
+    const v = f.vy; if (f.float > 0) return D2;
+    const p = v > 0 ? akMix(JU, TU, akEase(clamp((7 - v) / 7, 0, 1))) : akMix(TU, FA, akEase(clamp((-v - 1) / 7, 0, 1)));
+    if (c.flip && f.jdir && !f.airAct && !f.airDashed) { const q = TU.slice(); q[10] = -360 * f.jdir * clamp((f.t - 5) / 24, 0, 1); return f.t > 4 && f.t < 30 ? q : p; }
+    p[0] += f.jdir * 6; return p;
+  }
+  c.A = {
+    pz: Object.assign(Object.create(POSES), { crouch: CR }, S.pz), nearOpen: S.nearOpen || null, open: S.open || null,
+    pose(f) {
+      const t = f.t;
+      switch (f.st) {
+        case 'idle': return f.parryT > 0 || f.crouch ? null : idle(f);
+        case 'air': return air(f);
+        case 'dash': {
+          if (f.rush) return D2;
+          f.pr = 0.5;
+          if (f.jdir > 0) return akSeq(t, [[0, D1], [4, D2], [c.dash - 6, D2], [c.dash, D3]]);
+          const d = c.dash + 4, p = akSeq(t, [[0, B1], [5, B2], [d - 7, B2], [d - 1, B3]]);
+          p[11] = (fl ? st[11] : akHip(p)) + Math.sin(clamp(t / (d - 4), 0, 1) * Math.PI) * 13; return p; // a short hop
+        }
+        case 'hit': { f.pr = 0.7; const k = akEase(clamp(t / 10, 0, 1)); return f.crouch ? akMix(Z.kHitC1, Z.hitC, k) : f.hitLow ? akMix(Z.kHitL1, Z.kHitL2, k) : akMix(Z.kHitH1, Z.kHitH2, k); }
+        case 'blk': { f.pr = 0.7; const k = akEase(clamp(t / 8, 0, 1)); return f.crouch ? akMix(Z.kBlkC1, Z.blockC, k) : akMix(Z.kBlk1, Z.blockS, k); }
+        case 'up': return t < 8 ? Z.kKnee : CR;
+        case 'win': {
+          if (S.win) { const p = S.win(f, t, st); if (p) return p; }
+          if (t <= 10) return st; if (t < 20) { f.pr = 0.4; return DIP; } // a breath in, then the pose
+          f.pr = 0.34; const p = (Z[c.winPose] || Z.win).slice(), b = Math.sin(t * 0.07); p[0] += b * 1.2; p[3] += b * 3; p[5] += b * 3; return p;
+        }
+        case 'intro': { if (S.intro) { const p = S.intro(f, t, st); if (p) return p; } f.pr = 0.22; return t > 12 && t < 62 ? Z[c.intro] : st; }
+      }
+      return null;
+    }
+  };
+  return c.A;
+}
+// ---------- animation kit: the library of strikes ----------
+// Each strike is a few poses: wind-ups (w), the strike itself (s), sometimes a peak (h) and a follow-through (f), and a
+// recovery (r). A pose here is [lean, head, near arm, far arm, legs]; 0 means "leave that limb where the fighter's own
+// stance (or crouch, or jump tuck) has it", so the same strike looks different on every fighter.
+const NT = {
+  // standing punches
+  jabA: { w: [[-4, -2, [36, 128], 0, 0]], s: [6, 0, [86, 90], 0, [24, 4, -12, -26]], r: [0, -2, [44, 112], 0, 0], tr: 'ha' },
+  jabB: { w: [[-2, 0, 0, [40, 150], 0]], s: [10, 0, 0, [88, 90], [26, 4, -12, -30]], r: [2, 0, 0, [50, 130], 0], tr: 'hb' },
+  cross: { w: [[-8, -2, [50, 86], [-35, 70], [18, 2, -12, -24]]], s: [18, 2, [-24, 96], [90, 92], [32, 8, -18, -40]], r: [8, 0, [10, 100], [50, 110], [26, 4, -14, -32]], tr: 'hb' },
+  crossA: { w: [[-8, -2, [-30, 70], 0, [18, 2, -12, -24]]], s: [20, 2, [90, 92], 0, [34, 8, -18, -40]], r: [8, 0, [30, 110], 0, [26, 4, -14, -32]], tr: 'ha' },
+  hookA: { w: [[-10, -2, [-10, 100], 0, [18, 2, -12, -24]]], s: [22, 4, [78, 118], 0, [34, 8, -18, -40]], f: [28, 6, [112, 160], 0, [36, 8, -20, -42]], r: [8, 0, [40, 130], 0, [26, 4, -14, -32]], tr: 'ha' },
+  lunge: { w: [[-10, -2, [-40, 60], [50, 110], [14, 0, -14, -28]], [-4, 0, [-30, 80], [40, 100], [34, -4, -16, -36]]], s: [30, 5, [94, 94], [-30, 90], LW], f: [36, 8, [86, 80], [-34, 96], [44, 12, -26, -48]], r: [10, 2, [40, 110], [10, 110], [30, 6, -14, -34]], tr: 'ha' },
+  haymaker: { w: [[-10, 0, [-50, 80], [60, 120], 0], [-12, -2, [-80, 10], [56, 116], [16, 0, -14, -28]]], s: [30, 5, [96, 98], [-20, 110], LW], f: [40, 10, [64, 54], [-34, 96], LW], r: [12, 2, [40, 100], [20, 110], [30, 6, -14, -34]], tr: 'ha' },
+  dpalm: { w: [[-12, -4, [-30, 40], [-44, 28], [14, 0, -14, -28]], [-4, 0, [-20, 60], [-34, 46], [34, -4, -16, -36]]], s: [26, 4, [92, 90], [80, 86], [44, 12, -26, -48]], f: [32, 8, [78, 70], [66, 62], [46, 12, -28, -50]], r: [10, 2, [40, 90], [10, 60], [30, 6, -14, -34]], tr: 'ha', open: 1 },
+  hammer: { w: [[-6, -4, [120, 170], [110, 160], 0], [-12, -10, [164, 194], [154, 184], [16, 2, -14, -28]]], s: [30, 8, [86, 74], [76, 66], [44, 12, -26, -48]], f: [38, 12, [60, 44], [52, 38], [46, 12, -28, -50]], r: [12, 2, [40, 100], [30, 90], [30, 6, -14, -34]], tr: 'ha' },
+  elbow: { w: [[-6, -2, [10, 150], 0, [18, 2, -12, -24]]], s: [22, 2, [98, 176], 0, [36, 6, -18, -40]], r: [8, 0, [50, 150], 0, [26, 4, -14, -32]], tr: 'ha' },
+  chopS: { w: [[-8, -4, [124, 204], 0, [18, 2, -12, -24]]], s: [18, 2, [92, 84], 0, [32, 8, -18, -40]], f: [22, 4, [70, 40], 0, [34, 8, -18, -40]], r: [8, 0, [40, 100], 0, [26, 4, -14, -32]], tr: 'ha', open: 2 },
+  bodyJab: { w: [[4, 2, 0, [-30, 70], [22, 2, -14, -30]]], s: [34, 10, 0, [44, 50], [40, 10, -22, -44]], r: [14, 4, 0, [30, 120], [28, 4, -16, -34]], tr: 'hb' },
+  bodyHook: { w: [[2, 2, [-34, 60], 0, [22, 2, -14, -30]]], s: [26, 6, [70, 74], 0, [38, 8, -20, -42]], f: [30, 8, [96, 130], 0, [38, 8, -20, -42]], r: [12, 2, [40, 130], 0, [28, 4, -16, -34]], tr: 'ha' },
+  // standing kicks
+  snap: { w: [[-4, -2, 0, 0, [64, -30, -6, -20]]], s: [-8, 0, 0, 0, [80, 74, -4, -18]], r: [-4, -2, 0, 0, [60, -20, -6, -20]], tr: 'fa' },
+  side: { w: [[-6, -2, 0, 0, [92, -24, -4, -14]]], s: [-22, 2, [10, 70], [-40, -20], [103, 100, -2, -10]], r: [-10, 0, 0, 0, [84, -10, -4, -14]], tr: 'fa' },
+  front: { w: [[-4, -2, 0, 0, [96, -30, -4, -14]]], s: [-14, 0, 0, 0, [102, 98, -2, -10]], r: [-6, 0, 0, 0, [84, -10, -4, -14]], tr: 'fa' },
+  round: { w: [[2, 0, 0, 0, [60, -40, -8, -20]]], s: [-18, 0, [20, 120], [60, 120], [100, 98, -4, -12]], r: [-6, 0, 0, 0, [70, -10, -4, -14]], tr: 'fa' },
+  high: { w: [[4, 0, 0, 0, [50, -40, -8, -20]], [-12, -2, 0, 0, [112, 0, -2, -10]]], s: [-30, -4, [-30, 30], [60, 100], [132, 128, 2, -6]], f: [-12, 0, [10, 90], [40, 110], [70, 20, 0, -10]], r: [2, 0, 0, 0, [34, -8, -8, -22]], tr: 'fa' },
+  highG: { w: [[4, 0, 0, 0, [50, -40, -8, -20]], [-10, -2, 0, 0, [112, 0, -2, -10]]], s: [-26, -4, 0, 0, [132, 128, 2, -6]], f: [-10, 0, 0, 0, [70, 20, 0, -10]], r: [2, 0, 0, 0, [34, -8, -8, -22]], tr: 'fa' },
+  axe: { w: [[2, 0, 0, 0, [50, -40, -8, -20]], [-16, -4, 0, 0, [150, 146, 0, -6]]], s: [-8, 0, 0, 0, [118, 114, 0, -8]], f: [8, 2, 0, 0, [60, 40, -2, -12]], r: [4, 0, 0, 0, [34, -8, -8, -22]], tr: 'fa' },
+  // crouching
+  cjabA: { cr: 1, w: [[18, -8, 0, 0, 0]], s: [22, -6, [70, 74], 0, 0], r: [18, -8, 0, 0, 0], tr: 'ha' },
+  cjabB: { cr: 1, w: [[18, -8, 0, 0, 0]], s: [22, -6, 0, [72, 76], 0], r: [18, -8, 0, 0, 0], tr: 'hb' },
+  cbody: { cr: 1, w: [[10, -6, [40, 90], [-36, 60], 0]], s: [28, -6, [-10, 100], [78, 80], [80, -26, 38, -76]], r: [18, -8, 0, 0, 0], tr: 'hb' },
+  cbodyA: { cr: 1, w: [[10, -6, [-36, 60], 0, 0]], s: [28, -6, [78, 80], 0, [80, -26, 38, -76]], r: [18, -8, 0, 0, 0], tr: 'ha' },
+  upper: { cr: 1, w: [[30, -2, [-30, 20], [10, 80], [84, -34, 44, -78]]], s: [-2, -12, [150, 176], [-30, 40], [40, -6, 6, -34]], h: [-8, -16, [172, 184], [-34, 30], [24, 2, -4, -18]], f: [-2, -8, [140, 152], [-20, 40], [30, 0, -6, -24]], r: [10, -4, [60, 120], 0, [50, -14, 20, -50]], tr: 'ha' },
+  ctoe: { cr: 1, w: [[18, -8, 0, 0, 0]], s: [6, -4, 0, 0, [52, 66, 44, -74]], r: [12, -5, 0, 0, [86, 22, 42, -74]], tr: 'fa' },
+  clow: { cr: 1, w: [[14, -6, 0, 0, [84, -50, 44, -76]]], s: [-12, -4, [0, 60], [-40, -30], [70, 76, 60, -84]], r: [14, -6, 0, 0, [84, -50, 44, -76]], tr: 'fa' },
+  sweep: { cr: 1, w: [[24, -6, 0, 0, [86, -60, 40, -76]]], s: [-34, -4, [-70, -30], [-50, 10], [74, 80, 62, -86]], r: [0, -6, [10, 80], [-30, -40], [80, -10, 46, -76]], tr: 'fa' },
+  lowBlow: { cr: 1, w: [[30, -12, 0, [-30, 60], 0]], s: [60, -34, 0, [30, 40], [86, -44, 52, -82]], r: [30, -14, 0, 0, 0], tr: 'hb' },
+  lowHook: { cr: 1, w: [[30, -12, [-40, 50], 0, 0]], s: [58, -32, [34, 46], 0, [86, -44, 52, -82]], r: [30, -14, 0, 0, 0], tr: 'ha' },
+  lowSwing: { cr: 1, w: [[24, -8, [-70, 0], 0, [84, -40, 44, -78]]], s: [64, -36, [40, 52], [-40, 30], [88, -46, 54, -84]], r: [34, -16, [30, 80], 0, [84, -40, 46, -78]], tr: 'ha' },
+  // overheads
+  chop: { w: [[-6, -6, [150, 190], 0, 0], [-10, -10, [176, 200], 0, [16, 2, -14, -28]]], s: [30, 8, [74, 52], 0, [40, 10, -22, -44]], r: [16, 4, [50, 70], 0, [32, 6, -16, -36]], tr: 'ha' },
+  hammerOh: { w: [[-6, -6, [150, 190], [140, 180], 0], [-10, -10, [176, 200], [166, 190], [16, 2, -14, -28]]], s: [32, 8, [74, 52], [64, 44], [40, 10, -22, -44]], r: [16, 4, [50, 70], [40, 60], [32, 6, -16, -36]], tr: 'ha' },
+  // in the air
+  jA: { air: 1, w: [[10, -2, 0, 0, 0]], s: [22, 4, [72, 78], 0, 0], tr: 'ha' },
+  jB: { air: 1, w: [[10, -2, 0, 0, 0]], s: [28, 6, [-20, 60], [76, 70], [70, -20, 20, -60]], tr: 'hb' },
+  jHam: { air: 1, w: [[-10, -8, [160, 190], [150, 180], 0]], s: [34, 8, [70, 56], [60, 48], [60, -10, 20, -60]], tr: 'ha' },
+  jDownA: { air: 1, w: [[14, 0, [-20, 100], 0, 0]], s: [50, 16, [48, 40], 0, 0], tr: 'ha' },
+  jDownB: { air: 1, w: [[14, 0, 0, [-20, 100], 0]], s: [50, 16, 0, [48, 40], 0], tr: 'hb' },
+  jDownH: { air: 1, w: [[-6, -6, [150, 180], [140, 170], 0]], s: [56, 20, [50, 42], [40, 34], [70, -20, 20, -60]], tr: 'ha' },
+  jKnee: { air: 1, w: [[6, -2, 0, 0, 0]], s: [0, 0, 0, 0, [80, 30, 40, -80]], tr: 'fa' },
+  jFly: { air: 1, w: [[6, -2, 0, 0, 0]], s: [-6, 0, [10, 90], [-40, -40], [66, 70, -44, -56]], tr: 'fa' },
+  jDrop: { air: 1, w: [[8, -2, 0, 0, [100, -20, 60, -60]]], s: [-18, 0, [0, 70], [-50, -20], [52, 56, 92, -24]], tr: 'fa' }
+};
+NT.palmA = Object.assign({}, NT.jabA, { open: 2 });
+const NDEF = { '5LP': 'jabA', '5MP': 'cross', '5HP': 'haymaker', '5LK': 'snap', '5MK': 'round', '5HK': 'high', '2LP': 'cjabA', '2MP': 'cbody', '2HP': 'upper', '2LK': 'ctoe', '2MK': 'clow', '2HK': 'sweep',
+  '6MP': 'chop', jLP: 'jA', jMP: 'jB', jHP: 'jHam', jLK: 'jKnee', jMK: 'jFly', jHK: 'jDrop' };
+
+// Give one fighter their strikes. map: move -> strike name, for the ones that differ from the defaults.
+// o.lean scales how far the body commits; o.snap makes every change abrupt (a machine); o.open keeps a hand open.
+function kitNormals(key, map = {}, o = {}) {
+  const c = CHARS[key], Z = POSES, st = Z[c.stance] || Z.idle, SA = st.slice(2, 6), SL = st.slice(6, 10), CR = Z[key + '_cr'], lk = o.lean == null ? 1 : o.lean;
+  const use = Object.assign({}, NDEF, map);
+  for (const id in use) {
+    const m = c.moves[id], T = NT[use[id]]; if (!m || !T) continue;
+    const base = T.cr ? CR : T.air ? Z[key + '_tu'] : st, bA = base.slice(2, 4), bB = base.slice(4, 6), bL = T.cr ? LC : T.air ? TUCK : SL;
+    const dr = !T.cr && !T.air && o.drop ? o.drop : 0, low = (a, n) => (a && dr && (n === 's' || n === 'f') && a[0] > 58 && a[0] < 112 ? [a[0] - dr, a[1] - dr] : a);
+    const mkP = (q, n) => { const nm = key + '_' + id + '_' + n; Z[nm] = P(q[0] * (T.cr ? 1 : lk), q[1], [...(low(q[2], n) || bA), ...(low(q[3], n) || bB)], q[4] || bL); if (T.open || o.open) OPEN[nm] = T.open || o.open; return nm; };
+    const su = m.su, end = su + (m.ac || 1), sn = o.snap, keys = [], nW = T.w.length;
+    T.w.forEach((q, i) => keys.push([Math.round((su - 2) * i / nW), mkP(q, 'w' + i), sn ? 0.8 : i ? 0.5 : su <= 5 ? 0.7 : 0.55]));
+    keys.push([Math.max(1, su - 2), mkP(T.s, 's'), sn ? 0.95 : 0.85]);
+    if (T.h) keys.push([su + 1, mkP(T.h, 'h'), 0.7]);
+    if (!T.air) {
+      if (T.f && !sn) keys.push([end + 1, mkP(T.f, 'f'), 0.32]);
+      if (T.r) keys.push([Math.min(m.total - 4, T.f ? end + Math.max(5, Math.round((m.total - end) * 0.5)) : end + 2), mkP(T.r, 'r'), sn ? 0.7 : 0.38]);
+      m.animEnd = m.total - 2;
+    }
+    m.anim = keys; m.trail = T.tr; m.kit = 1;
+  }
+}
+// Specials, supers and throws keep the poses they were made with, but now snap into each blow and ease out of it.
+function kitRates(key) {
+  const c = CHARS[key];
+  for (const id in c.moves) {
+    const m = c.moves[id]; if (m.kit || !m.anim) continue;
+    m.anim = m.anim.map((k, i) => {
+      if (k[2]) return k;
+      const fr = k[0], near = (m.hits || []).some(h => h.su >= fr && h.su - fr <= 3) || (m.su >= fr && m.su - fr <= 3);
+      return [fr, k[1], near ? 0.8 : i === 0 ? 0.55 : fr < m.su ? 0.5 : 0.45];
+    });
+  }
+}
+// ---------- ONYX: his own animation set ----------
+// Calm, upright, one hand behind his back and the lead hand open. Strikes snap out and ease back; the walk, run,
+// jump, dashes, reactions, win and intro are his own. Frame data and hit boxes are untouched: this only changes
+// which pose is shown on which frame.
+{
+  const c = CHARS.onyx, SA = [26, 74, -22, -58], SL = [20, 2, -10, -22], CL = [78, -28, 40, -74], LG = [44, 12, -26, -48], TK = [74, -30, 34, -70];
+  Object.assign(POSES, {
+    oCrouch: P(16, -6, [30, 96, -30, -70], CL),
+    // dashes, jump, landing
+    oDash1: P(20, -8, [-20, -50, -34, -66], [62, 2, -38, -52]), oDash2: P(36, -20, [-44, -70, -56, -82], [56, 22, -50, -74]), oDash3: P(12, -6, [30, 80, -30, -60], [46, -8, -20, -42]),
+    oBack1: P(-14, 4, [40, 110, -22, -58], [36, 14, -4, -30]), oBack2: P(-4, 0, [48, 124, -22, -58], [46, -34, 8, -56]), oBack3: P(8, -2, [34, 96, -24, -60], [40, -14, -16, -48]),
+    oJumpUp: P(4, -8, [44, 124, -24, -60], [16, -8, -6, -30]), oTuck: P(10, -2, [36, 110, -30, -66], TK), oFall: P(-4, 2, [84, 144, -66, -24], [30, 6, -6, -32]),
+    oLand: P(18, 4, [40, 100, -34, -50], [56, -22, 22, -62]),
+    // punches: lead-hand jab, rear straight with the other hand pulled to the hip, two-handed dragon palm
+    oJabW: P(-5, -3, [36, 128, -22, -58], SL), oJab: P(6, 0, [86, 90, -26, -64], [24, 4, -12, -26]), oJabR: P(0, -2, [44, 112, -22, -58], SL),
+    oMpW: P(-8, -2, [50, 86, -35, 70], [18, 2, -12, -24]), oMp: P(18, 2, [-24, 96, 90, 92], [32, 8, -18, -40]), oMpR: P(8, 0, [10, 100, 50, 110], [26, 4, -14, -32]),
+    oHpW: P(-12, -4, [-30, 40, -44, 28], [14, 0, -14, -28]), oHpW2: P(-4, 0, [-20, 60, -34, 46], [34, -4, -16, -36]), oHp: P(26, 4, [92, 90, 80, 86], LG),
+    oHpF: P(32, 8, [78, 70, 66, 62], [46, 12, -28, -50]), oHpR: P(10, 2, [40, 90, 10, 60], [30, 6, -14, -34]),
+    oCLp: P(22, -6, [70, 74, -34, -72], CL), oCMpW: P(10, -6, [40, 90, -36, 60], CL), oCMp: P(28, -6, [-10, 100, 78, 80], [80, -26, 38, -76]),
+    // launcher: coil low, rise onto the toes with the arm straight up
+    oCHpW: P(30, -2, [-30, 20, 10, 80], [84, -34, 44, -78]), oCHp: P(-2, -12, [150, 176, -30, 40], [40, -6, 6, -34]), oCHpP: P(-8, -16, [172, 184, -34, 30], [24, 2, -4, -18]),
+    oCHpF: P(-2, -8, [140, 152, -20, 40], [30, 0, -6, -24]), oCHpR: P(10, -4, [60, 120, -20, -40], [50, -14, 20, -50]),
+    // kicks: the hands stay where they are
+    oLkW: P(-4, -2, SA, [64, -30, -6, -20]), oLk: P(-8, 0, [20, 80, -24, -60], [80, 74, -4, -18]), oLkR: P(-4, -2, SA, [60, -20, -6, -20]),
+    oMkW: P(-6, -2, [30, 110, -20, -50], [92, -24, -4, -14]), oMk: P(-22, 2, [10, 70, -40, -20], [103, 100, -2, -10]), oMkR: P(-10, 0, [24, 96, -24, -50], [84, -10, -4, -14]),
+    oHkW: P(4, 0, [40, 120, -10, -40], [50, -40, -8, -20]), oHkW2: P(-12, -2, [20, 100, -40, -10], [112, 0, -2, -10]), oHk: P(-30, -4, [-30, 30, 60, 100], [132, 128, 2, -6]),
+    oHkF: P(-12, 0, [10, 90, 40, 110], [70, 20, 0, -10]), oHkR: P(2, 0, [30, 90, -10, -40], [34, -8, -8, -22]),
+    oCLk: P(6, -4, [36, 100, -30, -70], [52, 66, 44, -74]), oCLkR: P(12, -5, [32, 98, -30, -70], [86, 22, 42, -74]), oCMkW: P(14, -6, [30, 96, -30, -70], [84, -50, 44, -76]), oCMk: P(-12, -4, [0, 60, -40, -30], [70, 76, 60, -84]),
+    oCHkW: P(24, -6, [50, 100, -20, -50], [86, -60, 40, -76]), oCHk: P(-34, -4, [-70, -30, -50, 10], [74, 80, 62, -86]), oCHkR: P(0, -6, [10, 80, -30, -40], [80, -10, 46, -76]),
+    // overhead chop
+    oOhW: P(-6, -6, [150, 190, -24, -60], SL), oOhW2: P(-10, -10, [176, 200, -30, -50], [16, 2, -14, -28]), oOh: P(30, 8, [74, 52, -40, -30], [40, 10, -22, -44]), oOhR: P(16, 4, [50, 70, -30, -50], [32, 6, -16, -36]),
+    // in the air
+    oJP: P(22, 4, [72, 78, -30, -60], TK), oJMp: P(28, 6, [-20, 60, 76, 70], [70, -20, 20, -60]), oJHpW: P(-10, -8, [160, 190, 150, 180], TK), oJHp: P(34, 8, [70, 56, 60, 48], [60, -10, 20, -60]),
+    oJLk: P(0, 0, [20, 100, -30, -60], [80, 30, 40, -80]), oJMk: P(-6, 0, [10, 90, -40, -40], [66, 70, -44, -56]), oJHkW: P(8, -2, [30, 110, -30, -50], [100, -20, 60, -60]), oJHk: P(-18, 0, [0, 70, -50, -20], [52, 56, 92, -24]),
+    // Dragon Fist: palm, body blow, rising palm, then the two-handed finish
+    oFiW: P(-10, -2, [44, 110, -40, 50], [16, 0, -14, -28]), oFi1: P(16, 0, [88, 92, -30, 80], [34, 6, -18, -38]), oFi1R: P(8, 0, [20, 110, -20, 90], [30, 4, -16, -34]),
+    oFi2: P(24, 4, [-20, 100, 70, 64], [40, 8, -22, -44]), oFi2R: P(14, 2, [30, 130, 20, 100], [36, 6, -20, -40]), oFi3: P(20, 0, [104, 150, -30, 70], [38, 8, -20, -42]),
+    // Dragon Shot: gather, rear back, snap forward
+    oBrC: P(8, 6, [40, 130, 30, 124], [26, 0, -14, -32]), oBrW: P(-16, -18, [-30, -64, -44, -78], [22, 0, -18, -36]), oBr: P(32, 14, [-50, -28, -64, -44], LG),
+    oBrH: P(26, 10, [-40, -20, -56, -38], [42, 10, -24, -46]), oBrR: P(8, 2, [10, 60, -20, -50], [28, 4, -14, -30]),
+    oABrW: P(-16, -18, [-30, -64, -44, -78], TK), oABr: P(34, 14, [-50, -28, -64, -44], [30, -30, -10, -60]),
+    // taking hits, guarding, getting up
+    oHitH1: P(-30, -24, [10, 60, -50, -20], [26, 4, -24, -46]), oHitH2: P(-14, -8, [0, 50, -30, -30], [20, 0, -22, -40]),
+    oHitL1: P(36, 26, [30, 90, 10, 70], [34, -4, -8, -36]), oHitL2: P(22, 14, [24, 80, -6, 40], [30, -2, -10, -36]),
+    oBlk1: P(-10, 2, [58, 168, 40, 150], [24, 0, -18, -40]), oBlk2: P(-3, 0, [52, 160, 44, 146], [24, 2, -14, -36]), oBlkC1: P(8, -4, [58, 168, 40, 150], CL), oBlkC: P(14, -6, [54, 162, 44, 148], CL),
+    oKnee: P(30, 10, [20, 60, -10, 30], [88, -70, 30, -86]),
+    // after the fight, and before it
+    oWin: P(-5, -8, [-24, -62, -20, -56], [14, 2, -8, -12]), oFlame: P(-4, 7, [52, 140, -22, -58], SL), oFlameC: P(-2, 2, [46, 128, -22, -58], SL), oBow: P(16, 8, [-22, -58, -18, -52], [14, 2, -8, -12]), oBeckon: P(-4, -6, [60, 130, -22, -58], SL)
+  });
+  Object.assign(OPEN, { stOnyx: 2, oCrouch: 2, oJabW: 2, oJab: 2, oJabR: 2, oCLp: 2, oHpW: 1, oHpW2: 1, oHp: 1, oHpF: 1, oHpR: 2, oFiW: 2, oFi1: 2, oFi1R: 2, oFi3: 2, oOhW: 2, oOhW2: 2, oOh: 2, oOhR: 2,
+    oJP: 2, oBrW: 1, oBr: 1, oBrH: 1, oABrW: 1, oABr: 1, oBeckon: 2, oLkW: 2, oLk: 2, oLkR: 2, oMkW: 2, oMk: 2, oMkR: 2, oCLk: 2, oCMkW: 2 });
+  c.winPose = 'oWin';
+
+  const PZ = Object.assign(Object.create(POSES), { crouch: POSES.oCrouch, flA: POSES.oFi1, flB: POSES.oFi2, cHPW: POSES.oCHpW, cHP: POSES.oCHpP, palm: POSES.oHp, palmW: POSES.oHpW, ohW: POSES.oOhW2, oh: POSES.oOh,
+    blockS: POSES.oBlk2, blockC: POSES.oBlkC, hitH: POSES.oHitH2, hitL: POSES.oHitL2 });
+  const ease = k => k * k * (3 - 2 * k), rd = Math.PI / 180;
+  const mixP = (a, b, k) => { const o = a.slice(); for (let i = 0; i < 10; i++) o[i] = a[i] + (b[i] - a[i]) * k; o[10] = b[10]; o[11] = -1; return o; };
+  const seq = (t, keys) => { // keys: [time, pose] in order; eased blend between neighbours
+    let i = 0; while (i < keys.length - 1 && t >= keys[i + 1][0]) i++;
+    if (i >= keys.length - 1) return keys[keys.length - 1][1].slice();
+    return mixP(keys[i][1], keys[i + 1][1], ease(clamp((t - keys[i][0]) / (keys[i + 1][0] - keys[i][0]), 0, 1)));
+  };
+  const hipOf = p => Math.max(40 * Math.cos(p[6] * rd) + 42 * Math.cos(p[7] * rd), 40 * Math.cos(p[8] * rd) + 42 * Math.cos(p[9] * rd));
+  // one leg of a walk or run: the thigh swings, and the knee folds while the foot is travelling forward
+  const stride = (p, i, th, amp, base, fold) => { const sw = Math.max(0, Math.cos(th)); p[i] = base + amp * Math.sin(th); p[i + 1] = p[i] - 8 - fold * sw; };
+
+  function idle(f) {
+    const Z = POSES, t = G.frame + f.i * 37; let p;
+    if (f.run) { // the dragon's run: body low, both hands streaming back with the coat
+      const th = f.walkT * 0.3; p = P(30, -16, [-40, -66, -52, -78], SL);
+      stride(p, 6, th, 46, 14, 70); stride(p, 8, th + Math.PI, 46, 14, 70);
+      const b = Math.sin(th * 2); p[0] += b * 2; p[2] += b * 5; p[3] += b * 7; p[4] -= b * 5; p[5] -= b * 6;
+    } else if (f.walkT) { // an unhurried walk; the upper body barely moves
+      const th = f.walkT * 0.22, fw = f.walkT > 0 ? 1 : -1; p = Z.stOnyx.slice();
+      stride(p, 6, th, 22, 6, 40); stride(p, 8, th + Math.PI, 22, 6, 40);
+      const b = Math.sin(th * 2), s1 = Math.sin(th);
+      p[0] += fw > 0 ? 6 : -4; p[1] += (fw > 0 ? -4 : 3) + b * 1.2; p[2] += s1 * 4 + (fw > 0 ? 0 : 8); p[3] += b * 3 + (fw > 0 ? 0 : 16); p[4] -= s1 * 3; p[5] -= s1 * 2;
+    } else { // standing: slow breathing, the lead hand drifting, and now and then a beckoning flourish
+      p = Z.stOnyx.slice(); const br = Math.sin(t * 0.07), br2 = Math.sin(t * 0.07 - 1.1), kf = (br + 1) * 1.6;
+      p[0] += br * 1.2; p[1] += br2 * 1.6 + Math.sin(t * 0.023) * 2.2;
+      p[2] += br2 * 2.2; p[3] += br * 5 + Math.sin(t * 0.035) * 3; p[4] += br * 1.5; p[5] += br2 * 2.2;
+      p[6] += kf; p[7] -= kf * 1.6; p[8] -= kf * 0.6; p[9] -= kf * 1.2;
+      const cyc = t % 400; if (cyc < 60) { const k = Math.sin(cyc / 60 * Math.PI), w = Math.sin(cyc / 60 * Math.PI * 4); p[2] += 18 * k; p[3] += 38 * k + 13 * w * k; p[1] -= 4 * k; p[0] -= 2 * k; }
+    }
+    const sq = clamp((1 - f.sq) * 7, 0, 1); // just landed: the knees take it
+    return sq > 0.02 ? mixP(p, Z.oLand, sq) : p;
+  }
+  function air(f) {
+    const Z = POSES, v = f.vy;
+    if (f.float > 0) return Z.oDash2;
+    const p = v > 0 ? mixP(Z.oJumpUp, Z.oTuck, ease(clamp((7 - v) / 7, 0, 1))) : mixP(Z.oTuck, Z.oFall, ease(clamp((-v - 1) / 7, 0, 1)));
+    p[0] += f.jdir * 6; return p;
+  }
+  c.A = {
+    pz: PZ, nearOpen: { idle: 1, pre: 1, air: 1, dash: 1, rec: 1, blk: 1, intro: 1, up: 1 },
+    open: f => (f.st === 'win' && f.t > 18 && f.t < 64 ? 2 : 0), // the palm that holds the flame
+    pose(f) {
+      const Z = POSES, t = f.t;
+      switch (f.st) {
+        case 'idle': return f.parryT > 0 || f.crouch ? null : idle(f);
+        case 'air': return air(f);
+        case 'dash': {
+          if (f.rush) return Z.oDash2;
+          f.pr = 0.5;
+          if (f.jdir > 0) return seq(t, [[0, Z.oDash1], [4, Z.oDash2], [c.dash - 6, Z.oDash2], [c.dash, Z.oDash3]]);
+          const d = c.dash + 4, p = seq(t, [[0, Z.oBack1], [5, Z.oBack2], [d - 7, Z.oBack2], [d - 1, Z.oBack3]]);
+          p[11] = hipOf(p) + Math.sin(clamp(t / (d - 4), 0, 1) * Math.PI) * 13; return p; // a short hop
+        }
+        case 'hit': { if (f.crouch) return null; f.pr = 0.7; const k = ease(clamp(t / 10, 0, 1)); return f.hitLow ? mixP(Z.oHitL1, Z.oHitL2, k) : mixP(Z.oHitH1, Z.oHitH2, k); }
+        case 'blk': { f.pr = 0.7; const k = ease(clamp(t / 8, 0, 1)); return f.crouch ? mixP(Z.oBlkC1, Z.oBlkC, k) : mixP(Z.oBlk1, Z.oBlk2, k); }
+        case 'up': return t < 8 ? Z.oKnee : Z.oCrouch;
+        case 'win': {
+          if (t <= 14) return Z.stOnyx;
+          if (t < 86) { // a small flame in his open palm, which he closes his hand on
+            f.pr = 0.22;
+            if (t > 28 && t < 64 && t % 3 === 0 && f.J) glow(f.J.ha[0] + f.face * 5, GROUND - f.J.ha[1] + 14, t % 2 ? f.el[1] : f.el[2], 8 + t % 5, 14, Math.sin(t * 1.7) * 0.3, 1.3 + (t % 4) * 0.25);
+            return t < 66 ? Z.oFlame : Z.oFlameC;
+          }
+          f.pr = 0.14; const p = Z.oWin.slice(), b = Math.sin(t * 0.06), nod = t > 120 && t < 160 ? Math.sin((t - 120) / 40 * Math.PI) : 0; p[0] += b + nod * 5; p[1] += nod * 9 - b; return p;
+        }
+        case 'intro': { f.pr = 0.16; return t < 16 ? Z.oWin : t < 52 ? mixP(Z.oWin, Z.oBow, Math.sin((t - 16) / 36 * Math.PI)) : t < 60 ? Z.oWin : t < 96 ? mixP(Z.oBeckon, Z.stOnyx, 0.5 + 0.5 * Math.sin((t - 60) / 36 * Math.PI * 4 - 1.57)) : Z.stOnyx; }
+      }
+      return null;
+    }
+  };
+
+  // which pose on which frame, for every move he has: [frame, pose, blend speed]
+  const an = (ids, keys, o = {}) => { for (const id of [].concat(ids)) { const m = c.moves[id]; m.anim = keys; m.animEnd = o.end || m.total - 2; if (o.trail) m.trail = o.trail; } };
+  an('5LP', [[0, 'oJabW', 0.7], [2, 'oJab', 0.85], [7, 'oJabR', 0.5]], { trail: 'ha' });
+  an('5MP', [[0, 'oMpW', 0.6], [4, 'oMp', 0.85], [10, 'oMpR', 0.4]], { trail: 'hb' });
+  an('5HP', [[0, 'oHpW', 0.5], [4, 'oHpW2', 0.5], [7, 'oHp', 0.85], [14, 'oHpF', 0.3], [22, 'oHpR', 0.3]]);
+  an('2LP', [[0, 'oCrouch', 0.6], [2, 'oCLp', 0.85], [7, 'oCrouch', 0.5]], { trail: 'ha' });
+  an('2MP', [[0, 'oCMpW', 0.6], [4, 'oCMp', 0.85], [10, 'oCrouch', 0.4]], { trail: 'hb' });
+  an('2HP', [[0, 'oCHpW', 0.6], [5, 'oCHp', 0.85], [8, 'oCHpP', 0.7], [15, 'oCHpF', 0.3], [24, 'oCHpR', 0.35]]);
+  an('5LK', [[0, 'oLkW', 0.7], [3, 'oLk', 0.85], [9, 'oLkR', 0.5]]);
+  an('5MK', [[0, 'oMkW', 0.6], [6, 'oMk', 0.85], [13, 'oMkR', 0.45]]);
+  an('5HK', [[0, 'oHkW', 0.5], [5, 'oHkW2', 0.6], [9, 'oHk', 0.85], [17, 'oHkF', 0.4], [26, 'oHkR', 0.35]]);
+  an('2LK', [[0, 'oCrouch', 0.6], [3, 'oCLk', 0.85], [8, 'oCLkR', 0.6], [11, 'oCrouch', 0.5]]);
+  an('2MK', [[0, 'oCMkW', 0.6], [5, 'oCMk', 0.85], [11, 'oCMkW', 0.4], [17, 'oCrouch', 0.4]]);
+  an('2HK', [[0, 'oCHkW', 0.55], [7, 'oCHk', 0.85], [15, 'oCHkR', 0.3]]);
+  an('6MP', [[0, 'oOhW', 0.3], [12, 'oOhW2', 0.4], [18, 'oOh', 0.85], [25, 'oOhR', 0.35]]);
+  an('jLP', [[0, 'oTuck', 0.6], [2, 'oJP', 0.85]], { end: 99 }); an('jMP', [[0, 'oTuck', 0.6], [4, 'oJMp', 0.85]], { end: 99, trail: 'hb' }); an('jHP', [[0, 'oJHpW', 0.6], [6, 'oJHp', 0.85]], { end: 99 });
+  an('jLK', [[0, 'oTuck', 0.6], [2, 'oJLk', 0.85]], { end: 99 }); an('jMK', [[0, 'oTuck', 0.6], [4, 'oJMk', 0.85]], { end: 99 }); an('jHK', [[0, 'oJHkW', 0.6], [6, 'oJHk', 0.85]], { end: 99 });
+  const fin = [[27, 'oHpW', 0.6], [32, 'oHp', 0.85], [40, 'oHpF', 0.3], [49, 'oHpR', 0.3]];
+  an(['fistL', 'fistM', 'fistH'], [[0, 'oFiW', 0.6], [7, 'oFi1', 0.85], [12, 'oFi1R', 0.6], [14, 'oFi2', 0.85], [19, 'oFi2R', 0.6], [21, 'oFi3', 0.85], ...fin]);
+  an('fistX', [[0, 'oFiW', 0.6], [6, 'oFi1', 0.85], [11, 'oFi1R', 0.6], [12, 'oFi2', 0.85], [17, 'oFi2R', 0.6], [18, 'oFi3', 0.85], [23, 'oCHpW', 0.6], [27, 'oCHp', 0.85], [30, 'oCHpP', 0.7], [38, 'oCHpF', 0.3]]);
+  an(['shotL', 'shotM', 'shotH', 'shotX'], [[0, 'oBrC', 0.5], [5, 'oBrW', 0.5], [12, 'oBr', 0.85], [22, 'oBrH', 0.3], [34, 'oBrR', 0.3]]);
+  an(['ashotL', 'ashotM', 'ashotH', 'ashotX'], [[0, 'oABrW', 0.6], [9, 'oABr', 0.85]], { end: 99 });
+  an('super', [[0, 'oFiW', 0.7], [5, 'oFi1', 0.85]]); an('ult', [[0, 'oHpW', 0.7], [5, 'oHp', 0.85]]);
+}
+// ---------- every fighter's animation set (ONYX has his own file) ----------
+{
+  // small things a fighter does while standing: p is the pose, k rises 0..1 and falls back, u runs 0..1 across it
+  const hop = (p, k, u) => { const h = Math.abs(Math.sin(u * Math.PI * 2)); p[6] += h * 8; p[7] -= h * 15; p[8] -= h * 4; p[9] -= h * 10; p[3] += h * 6; p[5] += h * 6; };
+  const flex = (p, k, u) => { p[2] += 30 * k; p[3] += 60 * k; p[4] += 26 * k; p[5] += 60 * k; p[1] += Math.sin(u * Math.PI * 2) * 9 * k; p[0] -= 5 * k; };
+  const shake = (p, k, u) => { const w = Math.sin(u * Math.PI * 6); p[3] += w * 12 * k; p[5] -= w * 12 * k; p[2] += 8 * k; p[1] += w * 3 * k; };
+  const hilt = (p, k) => { p[0] += 5 * k; p[2] -= 16 * k; p[3] -= 20 * k; p[6] += 6 * k; p[7] -= 10 * k; p[9] -= 6 * k; p[1] -= 4 * k; };
+  const twirl = (p, k, u) => { const a = u * Math.PI * 2; p[2] += Math.sin(a) * 22 * k; p[3] += Math.cos(a) * 28 * k; p[4] -= Math.sin(a) * 14 * k; p[0] += Math.sin(a) * 4 * k; p[1] -= 5 * k; };
+  const sights = (p, k) => { p[2] += 26 * k; p[3] += 20 * k; p[4] += 22 * k; p[5] += 24 * k; p[1] += 6 * k; p[0] += 3 * k; };
+  const circle = (p, k, u) => { const a = u * Math.PI * 2; p[2] += Math.sin(a) * 14 * k; p[3] += Math.cos(a) * 18 * k - 10 * k; p[4] -= Math.sin(a) * 12 * k; p[5] -= Math.cos(a) * 16 * k; };
+  const drift = (p, k) => { p[11] += 7 * k; p[1] -= 9 * k; p[2] -= 8 * k; p[4] -= 10 * k; p[3] -= 12 * k; p[5] -= 12 * k; };
+  const scan = (p, k, u) => { p[1] += (u < 0.35 ? 12 : u < 0.7 ? -10 : 0); p[3] += u > 0.7 ? 10 : 0; };
+
+  const SET = {
+    kai: [{ bounce: 0.45, walk: { amp: 19, fold: 38, split: 6 }, fl: hop, flEvery: 380, flLen: 44 }, { '5HP': 'lunge' }],
+    juno: [{ bounce: 0.7, walk: { sw: 12 }, run: { arms: 'back', lean: 32 }, fl: shake, flLen: 50 }, { '5MP': 'crossA', '5HP': 'dpalm', '5MK': 'side', '5HK': 'axe' }],
+    grave: [{ breath: 1.3, walk: { amp: 17, fold: 28, lf: 8, sw: 9 }, run: { arms: 'heavy', lean: 22, amp: 36 }, fl: flex, flEvery: 460, flLen: 80 },
+      { '5LP': 'palmA', '5MP': 'chopS', '5HP': 'hammer', '5MK': 'front', '5HK': 'highG', '6MP': 'hammerOh' }, { drop: 10 }],
+    raz: [{ breath: 0.6, walk: { amp: 20, fold: 44, lf: 8 }, run: { arms: 'back', lean: 34 }, fl: hilt, flLen: 70 }, { '5LP': 'palmA', '5MP': 'crossA', '5HP': 'chopS', '5MK': 'side', '5HK': 'axe' }],
+    zen: [{ bounce: 1, walk: { amp: 11, fold: 20, lf: 4, lb: -2, split: 14 }, run: { arms: 'guard', lean: 20, amp: 34 }, fl: hop, flEvery: 300, flLen: 40 },
+      { '5LP': 'jabB', '5MP': 'hookA', '5HP': 'lunge', '5LK': 'bodyJab', '5MK': 'bodyHook', '5HK': 'haymaker', '2LP': 'cjabB', '2LK': 'lowBlow', '2MK': 'lowHook', '2HK': 'lowSwing', jLK: 'jDownA', jMK: 'jDownB', jHK: 'jDownH' }],
+    tyrone: [{ bounce: 0.5, walk: { amp: 15, fold: 30, split: 9 }, run: { arms: 'guard', lean: 20, amp: 38 }, fl: hop, flEvery: 340, flLen: 44 }, { '5MP': 'elbow', '5MK': 'front', '5HK': 'high' }],
+    axel: [{ mech: 1, walk: { amp: 18, fold: 14, sw: 16, lf: 3, lb: -2 }, run: { arms: 'pump', lean: 18, amp: 40 }, fl: scan, flEvery: 300, flLen: 50 }, { '5HP': 'lunge', '5MK': 'side', '5HK': 'highG' }, { snap: 1 }],
+    sally: [{ bounce: 0.6, sway: 3, crouch: [60, 150, -64, -92], run: { arms: 'back', lean: 22 }, fl: twirl, flEvery: 360, flLen: 70 }, { '5LP': 'palmA', '5MP': 'chopS', '5HP': 'dpalm', '5MK': 'front', '5HK': 'axe' }],
+    jason: [{ breath: 0.7, walk: { amp: 17, fold: 32, lf: 8 }, run: { arms: 'gun', lean: 24, amp: 40 }, fl: sights, flLen: 80 }, { '5MK': 'front', '5HK': 'highG' }],
+    rima: [{ bounce: 0.25, run: { arms: 'back', lean: 30 }, fl: circle, flLen: 80 }, { '5LP': 'palmA', '5MP': 'chopS', '5HP': 'dpalm', '5MK': 'side' }],
+    kira: [{ breath: 0.7, run: { arms: 'back', lean: 22 }, fl: drift, flLen: 90 }, { '5LP': 'palmA', '5MP': 'crossA', '5HP': 'dpalm', '5MK': 'front', '5HK': 'highG' }, { lean: 0.55 }]
+  };
+  for (const k in SET) { animKit(k, SET[k][0]); kitNormals(k, SET[k][1], SET[k][2]); kitRates(k); }
 }
 // ---------- stages ----------
 const THEMES = {
@@ -4774,7 +5156,7 @@ if (onlineShown()) { const at = MODES.findIndex(m => m[0] === 'settings'); MODES
 // (some mobile networks block it), inputs are passed through the database instead: slower, but it still plays.
 const iceCfg = () => ({ iceServers: window.FT_ICE || [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }] });
 const roomCode = () => { const A = 'BCDFGHJKLMNPQRSTVWXZ'; let s = ''; for (let i = 0; i < 4; i++) s += A[(Math.random() * A.length) | 0]; return s; };
-const BUILD = '578432433';
+const BUILD = '397258230';
 const seat = () => ({ uid: ON.user.uid, name: ON.me.name, v: BUILD });
 const iceDone = pc => new Promise(res => { if (pc.iceGatheringState === 'complete') return res(); const t = setTimeout(res, 2500); pc.addEventListener('icegatheringstatechange', () => { if (pc.iceGatheringState === 'complete') { clearTimeout(t); res(); } }); });
 
