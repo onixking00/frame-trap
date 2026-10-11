@@ -30,6 +30,17 @@ body.bare #pad, body.bare #deck .btns, body:not(.touch) #pad, body:not(.touch) #
   background: radial-gradient(circle, rgba(255,255,255,.10) 0 38%, rgba(255,255,255,.03) 39% 96%, rgba(255,255,255,.2) 97%); border: 2px solid rgba(255,255,255,.2); opacity: .85; }
 .pad::before { content: ""; position: absolute; top: -9vh; right: -9vh; bottom: -9vh; left: -9vh; border-radius: 50%; }
 .pad i { position: absolute; left: 29%; top: 29%; width: 42%; height: 42%; border-radius: 50%; pointer-events: none; background: radial-gradient(circle at 35% 30%, #ff7a6a, #a8121a); box-shadow: 0 3px 0 rgba(0,0,0,.55), inset 0 -3px 6px rgba(0,0,0,.3); opacity: .9; }
+/* the D-pad: the same touch area as the stick, drawn as a cross whose arms light up */
+.pad .dp { display: none; }
+.move-dpad .pad { background: none; border-color: transparent; opacity: 1; }
+.move-dpad .pad i { display: none; }
+.move-dpad .pad .dp { display: flex; align-items: center; justify-content: center; position: absolute; pointer-events: none; background: rgba(12,8,20,.46); border: 0.5vh solid rgba(255,255,255,.42); color: rgba(255,255,255,.62); font: 400 4.4vh/1 var(--body); }
+.move-dpad .pad .dp.u { left: 33%; top: 1%; width: 34%; height: 34%; border-radius: 26% 26% 0 0; border-bottom: 0; }
+.move-dpad .pad .dp.d { left: 33%; bottom: 1%; width: 34%; height: 34%; border-radius: 0 0 26% 26%; border-top: 0; }
+.move-dpad .pad .dp.l { left: 1%; top: 33%; width: 34%; height: 34%; border-radius: 26% 0 0 26%; border-right: 0; }
+.move-dpad .pad .dp.r { right: 1%; top: 33%; width: 34%; height: 34%; border-radius: 0 26% 26% 0; border-left: 0; }
+.move-dpad .pad .dp.c { left: 33%; top: 33%; width: 34%; height: 34%; border: 0; }
+.move-dpad .pad .dp.on { background: rgba(255,255,255,.82); color: var(--ink); }
 .btns { position: absolute; right: var(--sr); bottom: 0; width: 66vh; height: 70vh; display: none; }
 .btns.full { transform-origin: 100% 100%; transform: translate(calc(var(--gx, 0) * 1vh), calc(var(--gy, 0) * 1vh)) scale(var(--gs, 1)); }
 .ctl-simple .btns.simple, .ctl-full .btns.full { display: block; }
@@ -142,7 +153,7 @@ body.touch #touchBox { order: -1; }
   <div class="screen" id="screen"><canvas id="game" width="960" height="540" tabindex="0" aria-label="Frame Trap"></canvas></div>
   <div id="hudDim" hidden></div>
   <div id="deck">
-    <div class="pad" id="pad" aria-label="Joystick"><i id="knob"></i></div>
+    <div class="pad" id="pad" aria-label="Joystick"><i id="knob"></i><b class="dp c"></b><b class="dp u" data-d="u">▲</b><b class="dp d" data-d="d">▼</b><b class="dp l" data-d="l">◀</b><b class="dp r" data-d="r">▶</b></div>
     <div class="btns simple">
       <button type="button" data-s="grab" style="--x:49;--y:5;--d:14;--f:.24;--c:#cfd6e6" aria-label="Throw">GRAB</button>
       <button type="button" data-s="ex" id="exBtn" style="--x:37;--y:27;--d:15;--c:#35d6ff" aria-label="EX special">EX</button>
@@ -247,9 +258,10 @@ body.touch #touchBox { order: -1; }
           <div class="opts">
             <label class="wide">On-screen stick and buttons <select id="touchSel"><option value="auto">Automatic</option><option value="on">Always show</option><option value="off">Never show</option></select></label>
             <button type="button" class="btn" id="ctlBtn">Controls: simple</button>
-            <button type="button" class="btn" id="hudBtn">Edit button layout</button>
+            <button type="button" class="btn" id="moveBtn">Move with: stick</button>
+            <button type="button" class="btn wide" id="hudBtn">Edit button layout</button>
           </div>
-          <p class="note" id="touchNote">Edit button layout lets you drag the stick and each button where you want it and resize it. In six-button mode the buttons move and resize as one group.</p>
+          <p class="note" id="touchNote">Move with a stick that follows your thumb or with a D-pad. Edit button layout lets you drag the stick or D-pad and each button where you want it and resize it. In six-button mode the buttons move and resize as one group.</p>
         </div>
         <div class="blk">
           <h3>Gamepad</h3>
@@ -283,7 +295,7 @@ body.touch #touchBox { order: -1; }
           <div><dt><b>COUNTER</b>Hit their startup</dt><dd>+20% damage and 2 extra frames of hitstun.</dd></div>
           <div><dt><b>PUNISH</b>Hit their recovery</dt><dd>+20% damage and 4 extra frames, enough to link moves that normally don't combo.</dd></div>
           <div><dt><b>CANCEL</b>Normal → special → super</dt><dd>Punches, st.LK and cr.MK cancel into specials on hit or block. Any special, EX or not, cancels into a super or the Ultimate, on the ground or in the air. Projectile specials cancel in the moment after the shot leaves, hit or not.</dd></div>
-          <div><dt><b>LAUNCH</b>cr.HP, then hold ↑</dt><dd>Crouching heavy punch launches. Hold up on hit to jump-cancel after them, then chain air normals light → medium → heavy into an air special and an air super.</dd></div>
+          <div><dt><b>LAUNCH</b>cr.HP starts an air combo</dt><dd>Crouching heavy punch launches, and when it hits you leap up after them by yourself (hold back to stay on the ground, or cancel into a special instead). In the air, light and medium hits knock them away from you and chain light → medium → heavy; a heavy punch or kick smashes them straight down. The first smash of a combo bounces them off the floor so you can keep hitting them; a second one slams them down for good.</dd></div>
           <div><dt><b>JUGGLE</b>Eight points</dt><dd>A launched body can be hit by anything. Normals and EX cost 1 point, specials 2, supers 3. At 8 it falls free. Some air moves bounce it off the floor.</dd></div>
           <div><dt><b>RUSH</b>Tap →→ on contact</dt><dd>Spend 1 bar to cancel a cancellable normal into a fast dash. The next hit gets 4 extra frames, so heavy → rush → heavy combos.</dd></div>
           <div><dt><b>STUN</b>The bar under your health</dt><dd>Taking hits fills it; it drains when you are left alone. Fill it and you are knocked down and get up dizzy. Mash buttons and wiggle the stick to recover sooner.</dd></div>
@@ -297,26 +309,26 @@ body.touch #touchBox { order: -1; }
       <div class="blk">
         <h3>First combos</h3>
         <table class="combo">
-          <tr><th scope="row">Anyone</th><td>j.HK, cr.HP, ↑, j.LP → j.MP → j.HP</td></tr>
+          <tr><th scope="row">Anyone</th><td>j.HK, cr.HP, j.LP → j.MP → j.HP (smash)</td></tr>
           <tr><th scope="row">KAI</th><td>MP → HP, ↓↙← + HK, ↓↘→↓↘→ + P</td></tr>
-          <tr><th scope="row">KAI</th><td>cr.HP, ↑, j.MP → j.HP, air ↓↙← + HK, air super</td></tr>
+          <tr><th scope="row">KAI</th><td>cr.HP, j.LP → j.MP, air ↓↙← + HK</td></tr>
           <tr><th scope="row">KAI</th><td>cr.MP, →↓↘ + HP, air ↓↘→↓↘→ + P</td></tr>
           <tr><th scope="row">JUNO</th><td>LP → MP → HP, ↓↘→ + HK, Ultimate</td></tr>
-          <tr><th scope="row">JUNO</th><td>cr.HP, ↑, j.MP → j.HP, air ↓↙← + P, air ↓↘→ + HK</td></tr>
-          <tr><th scope="row">GRAVE</th><td>cr.HP, ↑, j.MP → j.HP, air →↓← + P</td></tr>
+          <tr><th scope="row">JUNO</th><td>cr.HP, j.LP → j.MP → j.HK (smash)</td></tr>
+          <tr><th scope="row">GRAVE</th><td>cr.HP, j.LP → j.MP, air →↓← + P</td></tr>
           <tr><th scope="row">GRAVE</th><td>HP, →→ (rush), HP, ↓↘→ + LP</td></tr>
           <tr><th scope="row">ONYX</th><td>MP → HP, ↓↙← + HP (Dragon Fist), ↓↘→↓↘→ + P</td></tr>
-          <tr><th scope="row">ONYX</th><td>EX ↓↙← + PP (launch), cr.HP, ↑, j.MP → j.HP, air ↓↘→ + HP</td></tr>
+          <tr><th scope="row">ONYX</th><td>EX ↓↙← + PP (launch), cr.HP, j.LP → j.MP → j.HP (smash)</td></tr>
           <tr><th scope="row">ONYX</th><td>EX ↓↘→ + PP (three hits, launch), ↓↙←↓↙← + P</td></tr>
           <tr><th scope="row">RAZ</th><td>MP → HP, ↓↘→ + LP (Night Slash), ↓↘→↓↘→ + P</td></tr>
-          <tr><th scope="row">RAZ</th><td>EX →↓↘ + KK (behind them, launch), cr.HP, ↑, j.MP → j.HP</td></tr>
+          <tr><th scope="row">RAZ</th><td>EX →↓↘ + KK (behind them, launch), cr.HP, j.MP → j.HP (smash)</td></tr>
           <tr><th scope="row">ZEN</th><td>LP → MP → HP, ↓↙← + HP (Bullet Punch), ↓↘→↓↘→ + P</td></tr>
           <tr><th scope="row">ZEN</th><td>→↓↘ + P as they swing (Lightning Counter), then juggle</td></tr>
           <tr><th scope="row">TYRONE</th><td>MP → HP, ↓↘→ + HK (Burning Rush), ↓↘→↓↘→ + K</td></tr>
-          <tr><th scope="row">TYRONE</th><td>→↓↘ + HK (overhead, bounces them), cr.HP, ↑, air chain</td></tr>
+          <tr><th scope="row">TYRONE</th><td>→↓↘ + HK (overhead, bounces them), cr.HP, air chain</td></tr>
           <tr><th scope="row">AXEL</th><td>MP → HP, ↓↘→ + HK (Saw Blade Rampage), ↓↘→↓↘→ + P</td></tr>
           <tr><th scope="row">SALLY</th><td>LK → MK → HK, ↓↙← + HK (Gale Screw)</td></tr>
-          <tr><th scope="row">SALLY</th><td>↓↘→↓↘→ + K (high launch), cr.HP, ↑, j.MK → j.HK</td></tr>
+          <tr><th scope="row">SALLY</th><td>↓↘→↓↘→ + K (high launch), cr.HP, j.MK → j.HK (smash)</td></tr>
           <tr><th scope="row">JASON</th><td>MP → HP, ↓↘→ + MP (Bullet Barrage), ↓↘→↓↘→ + P</td></tr>
           <tr><th scope="row">RIMA</th><td>LP → MP → HP, ↓↘→ + HP (Lion Fist Rush), ↓↘→↓↘→ + P</td></tr>
           <tr><th scope="row">RIMA</th><td>EX ↓↘→ + KK (the viper drags them in), MP → HP, ↓↘→ + HP</td></tr>
@@ -524,6 +536,16 @@ const Snd = {
   slash() { this.burst(3600, 1.6, 0.07, 0.4, 'highpass'); this.tone(1900, 500, 0.06, 0.1, 'triangle'); },
   boom() { this.burst(160, 0.5, 0.8, 1.7, 'lowpass'); this.burst(2400, 0.4, 0.3, 0.5); this.tone(110, 28, 0.7, 0.9, 'sine'); },
   whistle() { this.tone(2200, 500, 0.5, 0.14, 'sine'); },
+  stun() { // seeing stars: a wobbling fall in pitch, then four small chirps going round
+    if (!this.ctx || !this.on || G.demo) return;
+    const c = this.ctx, t0 = c.currentTime + 0.01, o = c.createOscillator(), g = c.createGain(), l = c.createOscillator(), lg = c.createGain();
+    o.type = 'triangle'; o.frequency.setValueAtTime(900, t0); o.frequency.exponentialRampToValueAtTime(170, t0 + 0.55);
+    l.frequency.value = 14; lg.gain.value = 46; l.connect(lg); lg.connect(o.frequency);
+    g.gain.setValueAtTime(0.3, t0); g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.6);
+    o.connect(g); g.connect(this.out); o.start(t0); l.start(t0); o.stop(t0 + 0.62); l.stop(t0 + 0.62);
+    [0.46, 0.6, 0.74, 0.88].forEach((d, i) => { const p = c.createOscillator(), pg = c.createGain(), f = i % 2 ? 2100 : 1650; p.type = 'sine'; p.frequency.setValueAtTime(f, t0 + d); p.frequency.exponentialRampToValueAtTime(f * 1.35, t0 + d + 0.08);
+      pg.gain.setValueAtTime(0.13, t0 + d); pg.gain.exponentialRampToValueAtTime(0.001, t0 + d + 0.1); p.connect(pg); pg.connect(this.out); p.start(t0 + d); p.stop(t0 + d + 0.11); });
+  },
   // --- music: a 4-bar loop scheduled a little ahead of the audio clock ---
   musicOn: true, playing: false, next: 0, stepN: 0,
   mt(t, f0, f1, dur, vol, type) {
@@ -1389,7 +1411,7 @@ const freeMeter = () => G.mode === 'train' && G.opts.inf;
 function setIdle(f) {
   if (f.st === 'hit' || f.st === 'blk' || f.st === 'up') { f.rev = 2; f.thrInv = 6; }
   f.st = 'idle'; f.t = 0; f.mv = null; f.y = 0; f.vy = 0; f.vx = 0; f.freeAt = G.frame; f.airAct = 0; f.reset = 0; f.spinT = 0;
-  f.float = 0; f.airDashed = 0; f.rush = 0; f.rushB = 0; f.auraOn = null; f.jcFast = 0; f.wvx = 0; f.run = 0;
+  f.float = 0; f.airDashed = 0; f.rush = 0; f.rushB = 0; f.auraOn = null; f.jcFast = 0; f.aer = 0; f.wvx = 0; f.run = 0;
 }
 function land(f, n = 3) { Snd.land(); dust(f.x, 0, n); f.sq = 0.84; }
 function hasProj(f, m) { const mine = !!(m && m.proj && m.proj.mine); return G.projs.some(p => p.owner === f && !p.blast && !!p.d.mine === mine); }
@@ -1442,7 +1464,8 @@ function startMove(f, m, sdef) {
   const o = opp(f), wasAtk = f.st === 'atk';
   if (o && ((grounded(f) && !wasAtk) || (m.air && !m.normal))) f.face = o.x >= f.x ? 1 : -1;
   if (f.rev > 0 && (m.special || m.super || m.ult)) say(f, 'REVERSAL', '#ffc21a');
-  f.st = 'atk'; f.mv = m; f.mt = 0; f.hitMask = 0; f.connect = 0; f.sdef = sdef || null; f.armorN = m.armor ? (m.armorN || 1) : 0;
+  if (m.air && m.normal && f.connect && f.st === 'atk') { const o = opp(f); if (o.aerial && o.st === 'lnc') f.vx = o.vx * 0.92; } // an air combo's next hit goes with the body
+  f.st = 'atk'; f.mv = m; f.mt = 0; f.hitMask = 0; f.connect = 0; f.jcT = 0; f.sdef = sdef || null; f.armorN = m.armor ? (m.armorN || 1) : 0;
   f.crouch = m.cr ? 1 : 0; if (grounded(f)) f.vx = 0; else f.airAct = 1;
   f.rev = 0; f.rushB = 0; f.mvJug = 0; f.float = 0; f.auraOn = null; f.spinT = 0;
   if (m.cost && !freeMeter()) f.meter -= m.cost;
@@ -1562,8 +1585,11 @@ function updAtk(f) {
     if (s && m.special && !m.ex && s.ex && GRP[s.grp].filter(x => f.bRaw[x] <= 5).length >= 2 && usable(f, ch.moves[s.ex], m.air ? 'a' : 'g')) { gainMeter(f, -5); startMove(f, ch.moves[s.ex], s); return true; }
   }
   if (grounded(f) && f.connect) {
-    if (m.jc && f.connect === 2 && f.dy > 0) { // jump cancel off a launcher
-      f.st = 'pre'; f.t = 0; f.jdir = f.dx; f.mv = null; f.jcFast = 1; f.crouch = 0; say(f, 'JUMP CANCEL', '#f2ecdf'); return false;
+    // A launcher that hits takes you up after them: at once if you hold up, otherwise a moment later, which leaves
+    // time to cancel it into a special instead. From there the air hits behave as an air combo (see resolveHit).
+    if (m.jc && f.connect === 2 && opp(f).st === 'lnc' && opp(f).hp > 0 && (f.dy > 0 || (f.dx >= 0 && ++f.jcT >= 4))) { // holding back keeps you on the ground
+      f.st = 'pre'; f.t = 0; f.jdir = f.dy > 0 ? f.dx : 0; f.aer = f.dy > 0 && f.dx ? 0 : 1; f.mv = null; f.jcFast = 1; f.crouch = 0; f.ghostT = 16;
+      say(f, 'AIR COMBO', f.el[1]); ring(f.x, 8, f.el[2], 90, 14); return false;
     }
     if (m.normal && m.can && (f.dashReq > 0 || f.cmd === 'rush') && (f.meter >= 100 || freeMeter())) { // rush cancel
       if (!freeMeter()) f.meter -= 100;
@@ -1604,7 +1630,7 @@ function stepState(f) { // returns true when the new state should also run this 
   switch (f.st) {
     case 'idle': return updIdle(f);
     case 'pre':
-      if (f.t >= (f.jcFast ? 2 : ch.pre)) { f.st = 'air'; f.t = 0; f.y = 0.01; f.vy = ch.jumpV; f.vx = f.jdir * f.face * ch.jumpX; f.airAct = 0; f.airDashed = 0; f.float = 0; f.jcFast = 0; f.sq = 1.14; dust(f.x, 0, 4); }
+      if (f.t >= (f.jcFast ? 2 : ch.pre)) { f.st = 'air'; f.t = 0; f.y = 0.01; f.vy = ch.jumpV; f.vx = f.jdir * f.face * ch.jumpX; if (f.aer) { const o = opp(f); f.vy = Math.max(ch.jumpV, 14.4); f.vx = clamp((o.x - f.x) * 0.05 + o.vx * 0.8, -ch.jumpX, ch.jumpX); f.aer = 0; } f.airAct = 0; f.airDashed = 0; f.float = 0; f.jcFast = 0; f.sq = 1.14; dust(f.x, 0, 4); }
       return false;
     case 'air':
       if (f.dashReq && ch.airDash && !f.airDashed && f.y > 34) {
@@ -1634,16 +1660,20 @@ function stepState(f) { // returns true when the new state should also run this 
       f.stun--; return false;
     case 'lnc':
       if (airPhys(f)) {
-        if (f.bounce && f.hp > 0) { const bv = Math.max(1, f.bounce); f.bounce = 0; f.y = 0.01; f.vy = 8.4 * bv; f.vx *= 0.5; fxGround(f.x, 1, opp(f).el); Snd.slam(); G.shake = Math.max(G.shake, 7); f.sq = 0.8; return false; }
+        if (f.bounce && f.hp > 0) { const bv = Math.max(1, f.bounce); f.bounce = 0; f.y = 0.01; f.vy = 8.4 * bv; f.vx *= 0.5; fxGround(f.x, 1, opp(f).el); Snd.slam(); G.shake = Math.max(G.shake, 7); f.sq = 0.8;
+          if (f.spiked) { f.spiked = 0; G.shake = Math.max(G.shake, 12); fxGround(f.x, 3, opp(f).el); ring(f.x, 10, '#ffffff', 170, 18); Snd.boom(); } // smashed into the floor and thrown back up
+          return false; }
         if (f.hp <= 0) { f.st = 'ko'; f.t = 0; Snd.slam(); G.shake = 8; dust(f.x, 0, 10); }
         else if (f.reset) { endCombo(f); setIdle(f); f.thrInv = 4; }
-        else { f.st = 'down'; f.t = 0; f.vx = 0; Snd.slam(); G.shake = Math.max(G.shake, 5); dust(f.x, 0, 10); f.quick = f.ai ? chance(0.35) : f.dy < 0 || f.pD < 12; endCombo(f); }
+        else { f.st = 'down'; f.t = 0; f.vx = 0; Snd.slam(); G.shake = Math.max(G.shake, 5); dust(f.x, 0, 10); f.quick = f.ai ? chance(0.35) : f.dy < 0 || f.pD < 12;
+          if (f.spiked) { f.quick = false; G.shake = Math.max(G.shake, 13); fxGround(f.x, 3, opp(f).el); ring(f.x, 10, '#ffffff', 170, 18); Snd.boom(); } // smashed down: no quick rise
+          endCombo(f); }
       }
       return false;
     case 'down': if (f.t >= (f.quick ? 12 : 34)) { f.st = 'up'; f.t = 0; } return false;
     case 'up':
       if (f.t >= 16) {
-        if (f.dizzyNext && f.hp > 0) { f.dizzyNext = 0; f.st = 'dizzy'; f.t = 0; f.stun = f.ai ? 80 : 150; f.stunV = 0; f.stunCool = 480; f.crouch = 0; say(opp(f), 'STUN', '#ffc21a'); Voice.say('Stunned'); return false; }
+        if (f.dizzyNext && f.hp > 0) { f.dizzyNext = 0; f.st = 'dizzy'; f.t = 0; f.stun = f.ai ? 80 : 150; f.stunV = 0; f.stunCool = 480; f.crouch = 0; say(opp(f), 'STUN', '#ffc21a'); Snd.stun(); return false; }
         setIdle(f); return true;
       }
       return false;
@@ -1712,7 +1742,7 @@ function targetPose(f) {
     }
     case 'hit': return f.crouch ? PZ.hitC : f.hitLow ? PZ.hitL : PZ.hitH;
     case 'blk': return f.crouch ? PZ.blockC : PZ.blockS;
-    case 'lnc': { const p = PZ.launch.slice(); p[10] = f.reset ? (f.t * 22) % 360 : f.vy < -6 && f.bounce ? 150 : clamp(40 + f.t * 3, 40, 110); return p; }
+    case 'lnc': { const p = PZ.launch.slice(); p[10] = f.reset ? (f.t * 22) % 360 : f.spiked ? 172 : f.vy < -6 && f.bounce ? 150 : clamp(40 + f.t * 3, 40, 110); return p; }
     case 'down': case 'ko': return PZ.down;
     case 'up': return PZ.crouch;
     case 'thr': { const k = f.thr.kind === 'throw' ? ['throwA', 'throwB'] : ['slamA', 'slamB']; return PZ[f.t < f.thr.rel ? k[0] : k[1]]; }
@@ -1768,7 +1798,7 @@ function say(f, text, col) { G.msgs.push({ i: f.i, text, col, t: 0 }); if (G.msg
 function endCombo(f) {
   const o = opp(f);
   if (f.combo >= 4 && o && G.state === 'fight') say(o, f.combo >= 13 ? 'UNREAL' : f.combo >= 9 ? 'BRUTAL' : f.combo >= 6 ? 'SAVAGE' : 'NICE', '#f2ecdf');
-  f.combo = 0; f.cdmg = 0; f.jugN = 0; f.canJug = 0; f.bounce = 0;
+  f.combo = 0; f.cdmg = 0; f.jugN = 0; f.canJug = 0; f.bounce = 0; f.aerial = 0; f.spiked = 0; f.smashN = 0;
 }
 function fxPush(o) { if (G.fx.length < 560) { o.t = 0; G.fx.push(o); } }
 function spark(x, y, kind, s = 1) { fxPush({ k: kind, x, y, life: 12 + s * 3, s, a: rnd(6.28) }); }
@@ -1784,7 +1814,7 @@ function shock(x, R, col, life = 22) { fxPush({ k: 'shock', x, y: 0, R, col, lif
 function pillar(x, el, w = 70, life = 22) { fxPush({ k: 'pillar', x, y: 0, el, w, life }); }
 function slashFx(x1, y1, x2, y2, col) { fxPush({ k: 'slash', x: x1, y: y1, x2, y2, col, life: 12 }); }
 function crack(x, s = 1) { const ln = []; for (let i = 0; i < 7; i++) { const a = rnd(-1, 1); ln.push([a * 70 * s, rnd(4, 26), a * 70 * s + rnd(-30, 30) * s, rnd(4, 30)]); } fxPush({ k: 'crack', x, y: 0, ln, life: 200 }); }
-function num(x, y, text, col) { fxPush({ k: 'num', x: x + rnd(-10, 10), y, text, col, life: 34 }); }
+function num() { } // hits no longer throw their damage up as a number
 function fxHit(x, y, st, el, ctr) {
   spark(x, y, 'hit', st + (ctr ? 1 : 0)); sparks(x, y, 5 + st * 4 + (ctr ? 4 : 0), el, 6 + st * 2.5);
   glow(x, y, el[2], 26 + st * 16, 9);
@@ -1960,6 +1990,18 @@ function resolveHit(att, def, h, proj, pt) {
     def.st = 'lnc'; def.t = 0; def.y = Math.max(def.y, 0.01); def.vx = dir * L[0]; def.vy = L[1] > 0 ? L[1] * k : L[1]; def.crouch = 0;
     def.bounce = h.gb && !ko ? h.gb : 0;
     if (!proj && !grounded(att) && m && m.normal && wasLnc) { att.vy = Math.max(att.vy, 3.4); def.vx = att.vx * 0.7 + dir * 0.8; }
+    // Air combo. A launcher marks the body; after that, light and medium air hits knock it away from you, and a
+    // heavy air hit smashes it straight down into the floor, which ends the combo with a hard knockdown.
+    if (m && m.jc && !proj && !ko) { def.aerial = 1; def.spiked = 0; }
+    else if (def.aerial && wasLnc && m && m.normal && m.air && !proj && !ko) {
+      const lv = m.btn % 3;
+      if (lv === 2) { // the first smash of a combo bounces them off the floor, so the combo can go on; a second one slams them down for good
+        const first = !def.smashN; def.smashN = (def.smashN || 0) + 1;
+        def.vx = dir * 0.6; def.vy = -17; def.canJug = first ? 1 : 0; def.bounce = first ? 1.75 : 0; def.spiked = 1; def.aerial = 0; att.vy = first ? Math.min(att.vy, 1) : Math.max(att.vy, 5);
+        say(att, first ? 'SMASH' : 'SLAM', att.el[1]); G.shake = Math.max(G.shake, 9); G.zk = Math.max(G.zk, 0.07); ring(pt.x, pt.y, '#ffffff', 120, 12);
+      }
+      else { def.vx = dir * (lv ? 5.8 : 4.4); def.vy = (lv ? 5.4 : 5.8) * k; att.vx = dir * 0.6; } // they sail away; chaining the next hit carries you after them (startMove)
+    }
     if (proj && proj.d.hits > 1 && proj.hits > 0 && !ko) proj.carry = 1;
   } else {
     def.st = 'hit'; def.t = 0; def.stun = h.hs + (ctr === 1 ? 2 : ctr === 2 ? 4 : 0) + (!proj && att.rushB ? 4 : 0); def.vx = 0;
@@ -2284,7 +2326,7 @@ function aiInput(f) {
         if (!gnd) { // air routes: chain up in strength, then air special, then air super
           if (hit && f.meter >= 200 && (m.sc || (m.can && m.btn % 3 === 2)) && chance(0.7)) id = 'asuper';
           else if (hit && m.normal && m.btn % 3 < 2 && !m.dive) id = f.ch.norm.air[m.btn + 1];
-          else if (hit && m.normal) id = A.airSp;
+          else if (hit && m.normal && !o.spiked) id = A.airSp;
         }
         else if (hit && f.meter >= 300 && !M.ult.grab && (m.can || m.sc) && chance(o.hp < o.ch.hp * 0.5 ? 0.9 : 0.5)) id = 'ult';
         else if (hit && f.meter >= 200 && !M.super.grab && (m.can || m.sc) && chance(o.hp < 350 ? 0.9 : 0.2)) id = 'super';
@@ -3992,7 +4034,7 @@ function drawHUD() {
       big(String(f.comboShow), 0, 0, 64, f.comboShow >= 9 ? G_RED : f.comboShow >= 5 ? G_GOLD : G_ICE, al2);
       ctx.restore();
       const off = 30 + String(f.comboShow).length * 30;
-      txt('HIT COMBO', left ? cx + off : cx - off, 164, 20, C_BONE, al2, FD, 5, 0.15); px(f.comboD + ' DMG', left ? cx + off : cx - off, 180, 8, C_HP, al2); ctx.globalAlpha = 1;
+      txt('HIT COMBO', left ? cx + off : cx - off, 164, 20, C_BONE, al2, FD, 5, 0.15); if (G.mode === 'train') px(f.comboD + ' DMG', left ? cx + off : cx - off, 180, 8, C_HP, al2); ctx.globalAlpha = 1; // the total is a training aid only
     }
   }
   // timer
@@ -4609,7 +4651,7 @@ $('infChk').addEventListener('change', e => { G.opts.inf = e.target.checked; });
 $('mvTabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b) drawMoves(b.dataset.c); });
 
 // control deck: works by touch, and mirrors keyboard / pad input
-const DECK = { knob: $('knob'), btns: [...document.querySelectorAll('#deck [data-b]')], last: -1 };
+const DECK = { knob: $('knob'), btns: [...document.querySelectorAll('#deck [data-b]')], arms: [...document.querySelectorAll('#pad [data-d]')], last: -1 };
 {
   const pad = $('pad');
   // the knob follows the thumb; direction is read from the angle (eight ways), with a slightly narrower "up" so jumps are deliberate
@@ -4634,6 +4676,7 @@ function deckSync() {
   const r = rawLocal(0), k = (r.l ? 1 : 0) | (r.r ? 2 : 0) | (r.u ? 4 : 0) | (r.d ? 8 : 0) | (r.b << 4);
   if (k === DECK.last) return; DECK.last = k;
   if (!DECK.held) DECK.knob.style.transform = `translate(${((r.r ? 1 : 0) - (r.l ? 1 : 0)) * 30}%, ${((r.d ? 1 : 0) - (r.u ? 1 : 0)) * 30}%)`;
+  for (const a of DECK.arms) a.classList.toggle('on', !!r[a.dataset.d]);
   for (const b of DECK.btns) { const m = +b.dataset.b; b.classList.toggle('on', (m & (m - 1)) === 0 ? !!(r.b & m) : (touch.b & m) === m); }
 }
 
@@ -4743,6 +4786,10 @@ if (MOBILE) {
   const setCtl = v => { PREF.ctl = v === 'full' ? 'full' : 'simple'; document.body.classList.toggle('ctl-full', PREF.ctl === 'full'); document.body.classList.toggle('ctl-simple', PREF.ctl !== 'full'); $('ctlBtn').textContent = PREF.ctl === 'full' ? 'Controls: six buttons' : 'Controls: simple'; syncHow(); touch.b = 0; };
   $('ctlBtn').addEventListener('click', () => { Snd.ui(); setCtl(PREF.ctl === 'full' ? 'simple' : 'full'); savePref(); });
   setCtl(PREF.ctl);
+  // move with a stick that follows the thumb, or with a D-pad; both read the same eight directions from the same spot
+  const setMove = v => { PREF.move = v === 'dpad' ? 'dpad' : 'stick'; document.body.classList.toggle('move-dpad', PREF.move === 'dpad'); $('moveBtn').textContent = PREF.move === 'dpad' ? 'Move with: D-pad' : 'Move with: stick'; $('pad').setAttribute('aria-label', PREF.move === 'dpad' ? 'D-pad' : 'Joystick'); touch.l = touch.r = touch.u = touch.d = 0; };
+  $('moveBtn').addEventListener('click', () => { Snd.ui(); setMove(PREF.move === 'dpad' ? 'stick' : 'dpad'); savePref(); });
+  setMove(PREF.move);
 
   // --- picture quality: a cap on canvas width; "auto" steps it down if frames run slow ---
   const CAPS = { auto: 1280, high: 1600, mid: 1120, low: 800 };
@@ -4785,7 +4832,7 @@ if (MOBILE) {
 
   // --- layout editor: drag a control to move it, slider or pinch to resize; the six-button set moves as one group ---
   const hudEd = $('hudEd'), hudBoxes = $('hudBoxes'), hudSize = $('hudSize'), hudName = $('hudName'), hudPct = $('hudPct'), hudBar = $('hudBar');
-  const ITEMS = [{ k: 'pad', name: 'Stick', el: $('pad'), lo: 0.6, hi: 1.6 }, { k: 'menu', name: 'Pause button', el: $('menuBtn'), lo: 0.7, hi: 1.6 },
+  const ITEMS = [{ k: 'pad', name: 'Stick or D-pad', el: $('pad'), lo: 0.6, hi: 1.6 }, { k: 'menu', name: 'Pause button', el: $('menuBtn'), lo: 0.7, hi: 1.6 },
     { k: 'full', name: 'Six buttons', el: document.querySelector('.btns.full'), lo: 0.6, hi: 1.4, group: 1, mode: 'full' }];
   document.querySelectorAll('.btns.simple [data-s]').forEach(b => ITEMS.push({ k: b.dataset.s, name: b.getAttribute('aria-label') || b.dataset.s, el: b, lo: 0.6, hi: 1.6, mode: 'simple' }));
   if (!PREF.hud || typeof PREF.hud !== 'object' || Array.isArray(PREF.hud)) PREF.hud = {};
@@ -4872,7 +4919,7 @@ if (MOBILE) {
   cv.addEventListener('pointerdown', () => { if (G.scene === 'fight' && G.paused && drawer.hidden) togglePause(false); });
   addEventListener('contextmenu', e => e.preventDefault());
   // the touch flag changed: show the right hints, re-fit the controls, and pick the picture size that suits the device
-  UI.touchChanged = () => { syncHow(); $('ctlBtn').disabled = $('hudBtn').disabled = !TOUCH; $('touchSel').value = PREF.touch; if (PREF.qual === 'auto') setQual('auto'); fitAll(); lastK = ''; };
+  UI.touchChanged = () => { syncHow(); $('ctlBtn').disabled = $('hudBtn').disabled = $('moveBtn').disabled = !TOUCH; $('touchSel').value = PREF.touch; if (PREF.qual === 'auto') setQual('auto'); fitAll(); lastK = ''; };
   $('touchSel').addEventListener('change', e => { PREF.touch = e.target.value; savePref(); applyTouch(); });
   Object.assign(UI, { PREF, savePref, drawer, openDrawer, closeDrawer, hideDrawer, showTab, inFight, editing: () => editing, editHud });
   applyTouch();
@@ -5280,7 +5327,7 @@ if (onlineShown()) { const at = MODES.findIndex(m => m[0] === 'settings'); MODES
 // (some mobile networks block it), inputs are passed through the database instead: slower, but it still plays.
 const iceCfg = () => ({ iceServers: window.FT_ICE || [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }] });
 const roomCode = () => { const A = 'BCDFGHJKLMNPQRSTVWXZ'; let s = ''; for (let i = 0; i < 4; i++) s += A[(Math.random() * A.length) | 0]; return s; };
-const BUILD = '1878838495';
+const BUILD = '3385357778';
 const seat = () => ({ uid: ON.user.uid, name: ON.me.name, v: BUILD });
 const iceDone = pc => new Promise(res => { if (pc.iceGatheringState === 'complete') return res(); const t = setTimeout(res, 2500); pc.addEventListener('icegatheringstatechange', () => { if (pc.iceGatheringState === 'complete') { clearTimeout(t); res(); } }); });
 
