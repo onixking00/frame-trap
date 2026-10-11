@@ -3488,6 +3488,118 @@ function kitRates(key) {
   an(['ashotL', 'ashotM', 'ashotH', 'ashotX'], [[0, 'oABrW', 0.6], [9, 'oABr', 0.85]], { end: 99 });
   an('super', [[0, 'oFiW', 0.7], [5, 'oFi1', 0.85]]); an('ult', [[0, 'oHpW', 0.7], [5, 'oHp', 0.85]]);
 }
+// ---------- victory: every fighter celebrates their own way ----------
+// Each entry answers "which pose at frame t of the win" and may throw a little light; the last pose is also the one
+// shown on the result and select screens. (ONYX's flame-in-the-palm win lives with the rest of his set.)
+const WINS = {};
+{
+  const Z = POSES, wp = (f, j) => (f.J ? [f.J[j][0], GROUND - f.J[j][1]] : [f.x, f.y + 110]);
+  const sway = (p, t, k = 1) => { const b = Math.sin(t * 0.07); p[0] += b * k; p[3] += b * 2.5 * k; p[5] += b * 2.5 * k; return p; };
+  const lift = (f, t, j, col, every = 4, r = 8) => { if (t % every === 0) { const q = wp(f, j); glow(q[0] + Math.sin(t * 1.9) * 5, q[1] + 6, col, r + t % 4, 16, Math.sin(t * 1.3) * 0.4, 1.3 + (t % 3) * 0.3); } };
+  Object.assign(Z, {
+    kaiBow: P(32, 14, [8, 6, -2, -4], [10, 0, -6, -4]), kaiChamber: P(-2, -2, [-34, 84, -30, 80], [26, 0, -22, -26]), kaiWin: P(-4, -10, [174, 182, -30, 82], [22, 2, -18, -22]),
+    junoWin: P(-8, -6, [158, 172, -34, 46], [14, -2, -8, -6]),
+    gravePound1: P(-4, -6, [60, 172, 40, 100], [34, 0, -28, -44]), gravePound2: P(-4, -6, [40, 100, 62, 170], [34, 0, -28, -44]), graveRoar: P(-16, -20, [-56, -104, -70, -112], [36, 2, -30, -46]),
+    graveWin: P(-8, -12, [110, 204, -74, -164], [34, 0, -30, -44]),
+    razReach: P(6, -2, [150, 222, -10, 30], [22, 2, -16, -26]), razDraw: P(20, 2, [104, 96, -30, 40], [38, 8, -22, -44]), razFlick: P(10, 4, [40, 30, -24, 36], [30, 4, -18, -34]),
+    razUp: P(0, -4, [140, 170, -10, 30], [16, 2, -10, -18]), razWin: P(2, 6, [150, 222, -10, 20], [14, 2, -10, -16]),
+    zenWin: P(-6, -12, [168, 180, 130, 152], [14, 0, -10, -14]),
+    tyKnee: P(-6, -4, [70, 160, 84, 150], [104, -8, -2, -8]), tyStand: P(0, 0, [40, 140, 50, 140], [12, 2, -8, -12]), tyWin: P(16, 12, [56, 150, 60, 154], [12, 2, -8, -12]),
+    axelAtt: P(0, 0, [2, 4, -2, 2], [4, 0, -4, 0]), axelArm: P(0, 0, [96, 96, -2, 2], [4, 0, -4, 0]), axelWin: P(0, 0, [96, 180, -2, 2], [4, 0, -4, 0]),
+    jasonWin: P(-4, 6, [58, 172, -14, 24], [18, 2, -12, -16]),
+    rimaCrane: P(-4, -8, [128, 104, -128, -104], [98, -6, 0, -4]), rimaWin: P(12, 8, [68, 124, 58, 130], [14, 2, -8, -12]),
+    kiraWin: P(-12, -18, [-20, 2, -40, -22], [10, 18, -8, 6], 0, 100)
+  });
+  Object.assign(OPEN, { graveRoar: 1, tyWin: 1, rimaCrane: 1, rimaWin: 2, kiraWin: 1, junoWin: 2 });
+  const FINAL = { kai: 'kaiWin', juno: 'junoWin', grave: 'graveWin', raz: 'razWin', zen: 'zenWin', tyrone: 'tyWin', axel: 'axelWin', jason: 'jasonWin', rima: 'rimaWin', kira: 'kiraWin' };
+  for (const k in FINAL) CHARS[k].winPose = FINAL[k];
+
+  // KAI: a bow, fists to the hips, then one fist to the sky
+  WINS.kai = (f, t, st) => {
+    f.pr = 0.45; if (t === 66) { const q = wp(f, 'ha'); ring(q[0], q[1] + 20, f.el[1], 50, 16); }
+    if (t > 66 && t < 120) lift(f, t, 'ha', f.el[2]);
+    return t < 66 ? akSeq(t, [[12, st], [22, Z.kaiBow], [40, Z.kaiBow], [52, Z.kaiChamber], [60, Z.kaiChamber], [66, Z.kaiWin]]) : sway(Z.kaiWin.slice(), t);
+  };
+  // JUNO: a standing backflip, then a finger in the air and a hand on her hip
+  WINS.juno = (f, t, st) => {
+    f.pr = 0.5; const tu = Z.juno_tu, dip = Z.juno_dip;
+    if (t === 47) ring(f.x, 6, f.el[2], 60, 14);
+    if (t >= 20 && t < 46) { const k = (t - 20) / 26, p = tu.slice(); p[10] = 360 * k; p[11] = 46 + Math.sin(k * Math.PI) * 74; f.pr = 0.7; return p; }
+    if (t > 56 && t < 110) lift(f, t, 'ha', f.el[1], 6, 6);
+    return t < 20 ? akSeq(t, [[12, st], [19, dip]]) : t < 56 ? akSeq(t, [[46, dip], [56, Z.junoWin]]) : sway(Z.junoWin.slice(), t, 1.4);
+  };
+  // GRAVE: pounds his chest, roars, then flexes
+  WINS.grave = (f, t, st) => {
+    f.pr = 0.5;
+    if (t >= 16 && t < 46) { const n = Math.floor((t - 16) / 7); if ((t - 16) % 7 === 3) G.shake = Math.max(G.shake, 3); return n % 2 ? Z.gravePound2 : Z.gravePound1; }
+    if (t === 56) { G.shake = Math.max(G.shake, 9); ring(f.x + f.face * 20, 150 * f.ch.size, f.el[1], 150, 24); ring(f.x, 8, f.el[2], 110, 20); }
+    if (t < 100) return t < 16 ? st : t < 54 ? Z.grave_dip : Z.graveRoar;
+    return sway(Z.graveWin.slice(), t, 1.5);
+  };
+  // RAZ: draws, flicks the blade clean, and slides it home
+  WINS.raz = (f, t, st) => {
+    f.pr = 0.4; f.bladeOut = t >= 27 && t < 93;
+    if (t === 33) { const q = wp(f, 'ha'); ring(q[0] + f.face * 40, q[1], f.el[1], 70, 12); }
+    if (t === 93) { const q = wp(f, 'ha'); ring(q[0], q[1], '#ffffff', 22, 10); }
+    return t < 104 ? akSeq(t, [[12, st], [20, Z.razReach], [26, Z.razReach], [32, Z.razDraw], [40, Z.razDraw], [48, Z.razFlick], [66, Z.razFlick], [80, Z.razUp], [92, Z.razReach], [104, Z.razWin]]) : sway(Z.razWin.slice(), t, 0.6);
+  };
+  // ZEN: three shadow punches, then both gloves over his head, still bouncing
+  WINS.zen = (f, t, st) => {
+    f.pr = 0.6; if (t === 56) { const q = wp(f, 'ha'); ring(q[0], q[1], f.el[1], 60, 14); }
+    if (t < 56) return akSeq(t, [[12, st], [16, Z.zen_5LP_s], [20, st], [24, Z.zen_5MP_s], [29, st], [34, Z.zen_5HP_s], [42, Z.zen_5HP_s], [50, Z.zen_dip], [56, Z.zenWin]]);
+    const p = Z.zenWin.slice(), h = Math.abs(Math.sin(t * 0.2)); p[6] += h * 7; p[7] -= h * 13; p[8] -= h * 3; p[9] -= h * 9; p[3] += h * 4; p[5] += h * 4;
+    if (t < 130) { lift(f, t, 'ha', f.el[2], 5, 6); lift(f, t + 2, 'hb', f.el[1], 5, 6); }
+    return p;
+  };
+  // TYRONE: a raised knee with circling fists, then the wai: palms together and a bow
+  WINS.tyrone = (f, t, st) => {
+    f.pr = 0.35;
+    const p = akSeq(t, [[12, st], [22, Z.tyKnee], [42, Z.tyKnee], [52, Z.tyStand], [66, Z.tyWin]]);
+    if (t > 20 && t < 44) { const a = t * 0.4; p[3] += Math.sin(a) * 14; p[5] -= Math.sin(a) * 14; p[2] += Math.cos(a) * 8; p[4] -= Math.cos(a) * 8; }
+    if (t > 66) { const b = Math.sin((t - 66) * 0.035); p[0] += b * 7; p[1] += b * 5; }
+    return p;
+  };
+  // AXEL: attention, arm out, forearm up, one look left and right. Nothing eases: it is a machine
+  WINS.axel = (f, t, st) => {
+    f.pr = 0.9; if (t === 42 || (t > 42 && (t - 42) % 40 === 0)) ring(f.x + f.face * 8, 118 * f.ch.size, f.el[2], 44, 18);
+    const p = (t < 12 ? st : t < 28 ? Z.axelAtt : t < 40 ? Z.axelArm : Z.axelWin).slice();
+    if (t >= 56 && t < 68) p[1] += 12; else if (t >= 68 && t < 80) p[1] -= 10;
+    return p;
+  };
+  // SALLY: holds an arabesque while the wind circles her, then finishes on one leg with her arm high
+  WINS.sally = (f, t, st) => {
+    f.pr = 0.32; if (t === 24) ring(f.x, 6, f.el[2], 80, 20);
+    if (t > 22 && t < 60 && t % 3 === 0) { const a = t * 0.5; glow(f.x + Math.cos(a) * 46, 40 + (t - 22) * 3.2, t % 2 ? f.el[1] : f.el[2], 7, 14, -Math.sin(a) * 1.6, 0.8); }
+    const p = akSeq(t, [[12, st], [24, Z.arab], [50, Z.arab], [58, Z.sally_dip], [68, Z.flam]]);
+    if (t > 24 && t < 50) p[0] += Math.sin(t * 0.3) * 1.5;
+    if (t > 68) { const a = t * 0.06; p[2] += Math.sin(a) * 6; p[3] += Math.cos(a) * 8; p[0] += Math.sin(a) * 2; }
+    return p;
+  };
+  // JASON: one last look down the sights, then the pistol comes up beside his face and he blows the smoke away
+  WINS.jason = (f, t, st) => {
+    f.pr = 0.4;
+    if (t > 40 && t < 96 && t % 4 === 0 && f.J) { const J = f.J, dx = J.ha[0] - J.ea[0], dy = J.ha[1] - J.ea[1], L = Math.hypot(dx, dy) || 1; glow(J.ha[0] + dx / L * 26, GROUND - (J.ha[1] + dy / L * 26), '#b9b9c4', 6 + t % 3, 22, f.face * (t > 64 ? 1.4 : 0.2), 1.1); }
+    const p = t < 40 ? akSeq(t, [[12, st], [18, Z.aim], [30, Z.aim], [40, Z.jasonWin]]) : sway(Z.jasonWin.slice(), t, 0.6);
+    if (t > 60 && t < 78) { const k = Math.sin((t - 60) / 18 * Math.PI); p[1] += 9 * k; p[0] += 3 * k; }
+    return p;
+  };
+  // RIMA: the crane, one leg up and both arms spread, then fist to palm and a bow
+  WINS.rima = (f, t, st) => {
+    f.pr = 0.35; if (t === 72) ring(f.x + f.face * 16, 120, f.el[2], 60, 16);
+    const p = akSeq(t, [[12, st], [24, Z.rimaCrane], [54, Z.rimaCrane], [62, Z.rima_dip], [72, Z.rimaWin]]);
+    if (t > 24 && t < 54) { const w = Math.sin(t * 0.25) * 9; p[2] += w; p[3] += w; p[4] -= w; p[5] -= w; lift(f, t, 'ha', f.el[2], 6, 6); }
+    if (t > 72) { const b = Math.sin((t - 72) * 0.035); p[0] += b * 5; p[1] += b * 4; }
+    return p;
+  };
+  // KIRA: simply rises, arms loose, head back, while the dark lifts off the floor
+  WINS.kira = (f, t, st) => {
+    f.pr = 0.2; const k = akEase(clamp((t - 12) / 56, 0, 1)), p = akMix(st, Z.kiraWin, k);
+    p[11] = st[11] + (142 - st[11]) * k + Math.sin(t * 0.05) * 3; // she rises higher in the fight than the menus have room for
+    if (t > 12 && t % 3 === 0) glow(f.x + Math.sin(t * 1.3) * 34, 6 + (t * 7) % 50, t % 2 ? f.el[2] : '#1a0a2a', 8 + t % 5, 26, 0, 1.6);
+    if (t === 68) ring(f.x, 8, f.el[2], 90, 22);
+    return p;
+  };
+}
 // ---------- every fighter's animation set (ONYX has his own file) ----------
 {
   // small things a fighter does while standing: p is the pose, k rises 0..1 and falls back, u runs 0..1 across it
@@ -3516,7 +3628,7 @@ function kitRates(key) {
     rima: [{ bounce: 0.25, run: { arms: 'back', lean: 30 }, fl: circle, flLen: 80 }, { '5LP': 'palmA', '5MP': 'chopS', '5HP': 'dpalm', '5MK': 'side' }],
     kira: [{ breath: 0.7, run: { arms: 'back', lean: 22 }, fl: drift, flLen: 90 }, { '5LP': 'palmA', '5MP': 'crossA', '5HP': 'dpalm', '5MK': 'front', '5HK': 'highG' }, { lean: 0.55 }]
   };
-  for (const k in SET) { animKit(k, SET[k][0]); kitNormals(k, SET[k][1], SET[k][2]); kitRates(k); }
+  for (const k in SET) { if (WINS[k]) SET[k][0].win = WINS[k]; animKit(k, SET[k][0]); kitNormals(k, SET[k][1], SET[k][2]); kitRates(k); }
 }
 // ---------- stages ----------
 const THEMES = {
@@ -5156,7 +5268,7 @@ if (onlineShown()) { const at = MODES.findIndex(m => m[0] === 'settings'); MODES
 // (some mobile networks block it), inputs are passed through the database instead: slower, but it still plays.
 const iceCfg = () => ({ iceServers: window.FT_ICE || [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }] });
 const roomCode = () => { const A = 'BCDFGHJKLMNPQRSTVWXZ'; let s = ''; for (let i = 0; i < 4; i++) s += A[(Math.random() * A.length) | 0]; return s; };
-const BUILD = '397258230';
+const BUILD = '1536059967';
 const seat = () => ({ uid: ON.user.uid, name: ON.me.name, v: BUILD });
 const iceDone = pc => new Promise(res => { if (pc.iceGatheringState === 'complete') return res(); const t = setTimeout(res, 2500); pc.addEventListener('icegatheringstatechange', () => { if (pc.iceGatheringState === 'complete') { clearTimeout(t); res(); } }); });
 
