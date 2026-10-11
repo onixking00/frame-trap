@@ -228,6 +228,7 @@ body.touch #touchBox { order: -1; }
         <ul class="how" id="howSimple" hidden>
           <li><b>Stick</b> Move, jump with up, crouch with down, hold back to block. Double-tap left or right to dash; keep holding forward and the dash becomes a run.</li>
           <li><b>P / K</b> Punch and kick. Tap again as it lands to step up to the heavy.</li>
+          <li><b>↓ + P</b> The launching uppercut. When it hits you leap up after them: then P knocks them away, and P again smashes them down.</li>
           <li><b>SP</b> Special move. Neutral, holding back, or holding down each give a different one. Holding forward gives the heavy version.</li>
           <li><b>EX</b> The same, powered up, for 1 bar.</li>
           <li><b>SUPER</b> Super at 2 bars, Ultimate at 3. Hold down to pick the super when you have 3.</li>
@@ -4731,8 +4732,12 @@ if (MOBILE) {
   const mine = () => G.f[NET.on ? NET.slot : 0]; // the fighter this device controls
   const me = () => (G.scene === 'fight' && G.state === 'fight' && !G.paused && mine() && !mine().ai ? mine() : null);
 
-  // P and K step up through medium to heavy when pressed again during one of your own normals
-  const smart = base => { const f = me(); let lv = 1; if (f && f.st === 'atk' && f.mv && f.mv.normal && f.mv.btn >= base && f.mv.btn < base + 3) lv = Math.min(2, f.mv.btn - base + 1); return 1 << (base + lv); };
+  // P and K step up through medium to heavy when pressed again during one of your own normals.
+  // Crouching P goes straight to the heavy: that is the launching uppercut, which the two buttons could not reach otherwise.
+  const smart = base => { const f = me(); let lv = 1;
+    if (f && f.st === 'atk' && f.mv && f.mv.normal && f.mv.btn >= base && f.mv.btn < base + 3) lv = Math.min(2, f.mv.btn - base + 1);
+    else if (f && !base && touch.d && f.y <= 0 && f.st !== 'air' && f.st !== 'pre') lv = 2;
+    return 1 << (base + lv); };
   // SP, EX and SUPER are sent to the game as extra input bits; the game picks the move from the direction held (see simpleCmd)
   const XBIT = { sp: 1, ex: 2, super: 4 };
   document.querySelectorAll('.btns.simple [data-s]').forEach(b => {
@@ -5327,7 +5332,7 @@ if (onlineShown()) { const at = MODES.findIndex(m => m[0] === 'settings'); MODES
 // (some mobile networks block it), inputs are passed through the database instead: slower, but it still plays.
 const iceCfg = () => ({ iceServers: window.FT_ICE || [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }] });
 const roomCode = () => { const A = 'BCDFGHJKLMNPQRSTVWXZ'; let s = ''; for (let i = 0; i < 4; i++) s += A[(Math.random() * A.length) | 0]; return s; };
-const BUILD = '3385357778';
+const BUILD = '2594452988';
 const seat = () => ({ uid: ON.user.uid, name: ON.me.name, v: BUILD });
 const iceDone = pc => new Promise(res => { if (pc.iceGatheringState === 'complete') return res(); const t = setTimeout(res, 2500); pc.addEventListener('icegatheringstatechange', () => { if (pc.iceGatheringState === 'complete') { clearTimeout(t); res(); } }); });
 
