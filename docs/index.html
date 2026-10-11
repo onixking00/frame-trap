@@ -1742,6 +1742,7 @@ function lerpPose(a, b, r) {
 // attack's keys may carry their own blend speed, [frame, pose, speed], so strikes snap out and recoveries ease back.
 function targetPose(f) {
   const A = f.ch.A, PZ = A ? A.pz : POSES; f.pr = 0;
+  if ((f.st === 'thr' || f.st === 'thrn') && f.thr && f.thr.S) return thrPose(f, PZ);
   if (A) { const p = A.pose(f, PZ); if (p) return p; }
   switch (f.st) {
     case 'idle': {
@@ -2163,6 +2164,7 @@ function checkThrows() {
     if (m.cine) { endCombo(def); def.y = 0; Snd.grab(); startCine(att, def, m); return; } // a grab that opens a scripted sequence
     const kind = g.kind, rel = kind === 'throw' ? 26 : kind === 'cmd' ? 42 : kind === 'air' ? 9999 : 66;
     const T = { kind, dmg: g.dmg * (m.dm || 1) * (m.super || m.ult ? 1 : att.ch.dk || 1), tech: g.tech ? 8 : 0, rel, end: rel + 22, back: kind === 'throw' && att.backThrow, att, def, rot: 0, scale: def.combo ? Math.max(0.4, SCALE[Math.min(def.combo, 9)]) : 1, base: def.combo, based: def.cdmg };
+    const S = kind === 'throw' && att.ch.thr; if (S) { T.S = S; T.rel = T.tech + S.len; T.end = T.rel + S.rec; }
     att.st = 'thr'; att.t = 0; att.thr = T; att.mv = null; att.pvx = 0; att.auraOn = null; att.vx = att.vy = 0;
     def.st = 'thrn'; def.t = 0; def.thr = T; def.mv = null; def.pvx = 0; def.vx = def.vy = 0; def.float = 0;
     if (kind !== 'air') { def.y = 0; endCombo(def); T.scale = 1; T.base = 0; T.based = 0; }
@@ -2178,17 +2180,18 @@ function doTech(a, d) {
 }
 function throwRelease(f, d, T) {
   const kind = T.kind, dmg = Math.round(T.dmg * T.scale);
-  d.hp = Math.max(0, d.hp - dmg); d.combo = T.base + 1; d.cdmg = T.based + dmg; f.comboShow = d.combo; f.comboD = d.cdmg; f.comboT = 80; f.pop = 8; d.regen = 0; d.lastHurt = G.frame;
+  d.hp = Math.max(0, d.hp - (dmg - (T.dealt || 0))); d.combo = T.base + 1; d.cdmg = T.based + dmg; f.comboShow = d.combo; f.comboD = d.cdmg; f.comboT = 80; f.pop = 8; d.regen = 0; d.lastHurt = G.frame;
   gainMeter(f, kind === 'super' ? 0 : T.dmg * 0.1); gainMeter(d, T.dmg * 0.05);
   d.st = 'lnc'; d.t = 0; d.reset = 0; d.canJug = 0; d.bounce = 0; d.flash = 6;
-  if (kind === 'throw') { d.y = Math.max(d.y, 20); d.vx = f.face * 5.5; d.vy = 6; Snd.hit(1); fxHit(d.x, d.y + 80, 1, f.el, 0); }
+  if (T.S) thrOut(f, d, T);
+  else if (kind === 'throw') { d.y = Math.max(d.y, 20); d.vx = f.face * 5.5; d.vy = 6; Snd.hit(1); fxHit(d.x, d.y + 80, 1, f.el, 0); }
   else {
     const big = kind === 'super';
     d.x = f.x + f.face * 54; d.y = 0.01; d.vx = f.face * 2.2; d.vy = 6.5; Snd.slam(); if (big) Snd.boom();
     fxGround(d.x, big ? 3 : 2, f.el); fxHit(d.x, 24, 2, f.el, big); if (big) { pillar(d.x, f.el, 150, 26); G.flashA = 0.7; }
   }
   num(d.x, d.y + 120, String(dmg), '#ffc21a');
-  f.hitstop = d.hitstop = kind === 'throw' ? 5 : 12;
+  f.hitstop = d.hitstop = T.S ? T.S.out.stop || 8 : kind === 'throw' ? 5 : 12;
   if (d.hp <= 0) koFx(d, f.el, kind === 'super' ? 'super' : kind === 'throw' ? null : 'special');
   addScore(f, dmg * 10);
 }
@@ -2208,6 +2211,7 @@ function updThrow(f) {
     d.x = f.x + f.face * (f.ch.hw + d.ch.hw + 2); d.face = -f.face; return;
   }
   if (T.back && t === T.tech + 1) f.face = -f.face;
+  if (T.S) { thrScript(f, d, T, t - T.tech); if (t >= T.end) { f.y = 0; setIdle(f); } return; } // this fighter's own throw
   if (t < T.rel) {
     const k = (t - T.tech) / (T.rel - T.tech);
     d.face = -f.face;
@@ -2253,6 +2257,70 @@ function camera() {
   const dist = Math.abs(a.x - b.x);
   const zt = G.cine ? G.zoomT : G.freeze > 0 && G.flashBy ? 1.5 : 1 + clamp((400 - dist) / 400, 0, 1) * 0.1;
   G.zoom = lerp(G.zoom, zt, 0.14) ; G.zk *= 0.82;
+}
+// ---------- each fighter's own throw ----------
+// A throw is a short script, played once the 8 frames in which it can be broken are over. Range, startup, damage and the
+// break are the same for everybody: the script only decides what the two bodies do and where the victim ends up.
+//   len   frames from the end of the break window to the release
+//   rec   the thrower's recovery after the release
+//   a     thrower keys  [frame, { p: pose, x, y, o: hands (0 fists, 1 open, 2 lead hand open), turn, blade, sp: spirit }]
+//   v     victim keys   [frame, { p: pose, x, y, rot, g, flip, e }]   x: ahead of the thrower's starting spot,
+//         y: height of the hips (g: 1 = "standing", scaled to the victim's size), e: how the move INTO this key eases
+//   hits  [frame, fn(f, d, T)]  beats along the way: sound, sparks, a share of the damage
+//   each  fn(f, d, T, frame), every frame up to the release, for effects that run all the way through
+//   out   the release: { vx, vy, slam, stop, fx(f, d, T) }
+// Positions run forward from the thrower, so a back throw is the same script after the thrower has turned round.
+const THR_STAND = 78, THR_ROOM = 96;
+function mkThrow(S) { // fill in what a key leaves out with the key before it
+  for (const keys of [S.a, S.v]) { let last = { x: 0, y: 0, rot: 0 }; for (const k of keys) { const o = k[1]; for (const n of ['x', 'y', 'rot']) if (o[n] == null) o[n] = last[n]; if (o.p == null) o.p = last.p; last = o; } }
+  S.rec = S.rec || 22; S.hits = S.hits || []; return S;
+}
+const thrEase = (k, e) => (e === 'in' ? k * k : e === 'out' ? 1 - (1 - k) * (1 - k) : e === 'lin' ? k : k * k * (3 - 2 * k));
+function thrAt(keys, u, s) { // -> the key in force at frame u, with x, y and rot blended toward the next one
+  let i = 0; while (i < keys.length - 1 && u >= keys[i + 1][0]) i++;
+  const a = keys[i][1], ya = a.g ? a.y * s : a.y, o = { k: a, x: a.x, y: ya, rot: a.rot };
+  if (i < keys.length - 1 && u > keys[i][0]) {
+    const b = keys[i + 1][1], k = thrEase((u - keys[i][0]) / (keys[i + 1][0] - keys[i][0]), b.e), yb = b.g ? b.y * s : b.y;
+    o.x = a.x + (b.x - a.x) * k; o.y = ya + (yb - ya) * k; o.rot = a.rot + (b.rot - a.rot) * k;
+  }
+  return o;
+}
+function thrScript(f, d, T, u) {
+  const S = T.S;
+  if (T.dir == null) { // first frame: fix the direction, and make room if a wall is too close for the animation
+    const [lo, hi] = bounds(), room = S.room || THR_ROOM; T.dir = f.face; T.xs = f.x; T.gap = (d.x - f.x) * f.face - S.v[0][1].x; T.x0 = T.dir > 0 ? Math.min(f.x, hi - room) : Math.max(f.x, lo + room);
+  }
+  const dir = T.dir, ax = T.xs + (T.x0 - T.xs) * Math.min(1, u / 6), A = thrAt(S.a, u, 1);
+  f.x = ax + dir * A.x; f.y = Math.max(0, A.y); f.face = A.k.turn ? -dir : dir;
+  T.ap = A.k.p; T.open = A.k.o || 0; T.blade = A.k.blade || 0; T.spirit = A.k.sp || null; T.apr = A.k.r || 0;
+  if (u < S.len) {
+    const V = thrAt(S.v, u, d.ch.size);
+    d.x = ax + dir * (V.x + T.gap * Math.max(0, 1 - u / 5)); d.y = Math.max(0, V.y); d.face = V.k.flip ? dir : -dir; T.vp = V.k.p; T.rot = V.rot; T.hip0 = 1;
+    for (const h of S.hits) if (h[0] === u) h[1](f, d, T);
+    if (S.each) S.each(f, d, T, u);
+  } else if (u === S.len) throwRelease(f, d, T);
+}
+// one beat of a throw: a share of the damage (never the knockout: that is the release's), a sound, sparks, a short freeze
+function thrHit(f, d, T, o = {}) {
+  const st = o.st == null ? 1 : o.st, part = Math.round(T.dmg * T.scale * (o.w || 0));
+  if (part) { const take = Math.min(part, d.hp - 1); if (take > 0) { d.hp -= take; T.dealt = (T.dealt || 0) + take; d.lastHurt = G.frame; d.regen = 0; } }
+  const x = o.x != null ? T.x0 + T.dir * o.x : d.x, y = o.y != null ? o.y : d.y + 20;
+  if (!o.quiet) { Snd.hit(st); fxHit(x, y, st, f.el, 0); }
+  d.flash = 4; f.hitstop = d.hitstop = o.stop == null ? 3 + st * 2 : o.stop; G.shake = Math.max(G.shake, 3 + st * 3);
+  return [x, y];
+}
+function thrOut(f, d, T) {
+  const o = T.S.out, dir = T.dir, s = d.ch.size, hy = d.y;
+  d.face = -dir; d.vx = dir * o.vx; d.vy = o.vy;
+  if (o.slam) { d.y = 0.01; Snd.slam(); fxGround(d.x, o.slam, f.el); fxHit(d.x, 24, 2, f.el, 0); G.shake = Math.max(G.shake, 6 + o.slam * 3); }
+  else { d.y = Math.max(0.01, hy - 62 * s); if (d.pose) d.pose[11] = (hy - d.y) / s; // the hips stay where they were while the freeze holds
+    if (!o.quiet) { Snd.hit(2); fxHit(d.x, hy + 10, 2, f.el, 0); } G.shake = Math.max(G.shake, 7); }
+  if (o.fx) o.fx(f, d, T, hy);
+}
+function thrPose(f, PZ) {
+  const T = f.thr, S = T.S, Z = n => PZ[n] || POSES[n] || POSES.idle;
+  if (f.st === 'thr') { f.pr = T.apr || 0.5; return Z(T.ap || S.a[0][1].p); }
+  const p = Z(T.vp || S.v[0][1].p).slice(); f.pr = 0.6; p[10] = T.rot || 0; if (T.hip0) p[11] = 0; return p;
 }
 // ---------- CPU opponent ----------
 const DIFF = [
@@ -2579,7 +2647,7 @@ function relaxChains(f, J) { // cloth: each link follows the one before it, with
 }
 function postFx(f) {
   const J = f.J = rig(f);
-  const A = f.ch.A, op = (A && A.open && A.open(f)) || OPEN[animKey(f)]; // 1: both hands open; 2: only the near (lead) hand
+  const A = f.ch.A, op = f.st === 'thr' && f.thr && f.thr.S ? f.thr.open || 0 : (A && A.open && A.open(f)) || OPEN[animKey(f)]; // 1: both hands open; 2: only the near (lead) hand
   f.open = op === 1 || (f.st === 'idle' && !f.crouch && !!f.ch.openIdle);
   f.openN = op === 2 || (!op && !!A && !!A.nearOpen && !!A.nearOpen[f.st]);
   for (const k in f.lh) { const a = f.lh[k]; a.push(J[k]); if (a.length > 7) a.shift(); }
@@ -3010,7 +3078,7 @@ LX.raz = {
     ctx.lineCap = 'round'; seam(D, [q, t], 6.5, INK); seam(D, [q, t], 3.6, '#eef3ff'); stripe([g, q], 4.5 * s, D.col('acc'), 2.5); stripe([[q[0] - uy * 6 * s, q[1] + ux * 6 * s], [q[0] + uy * 6 * s, q[1] - ux * 6 * s]], 3 * s, '#d8b24a', 2.5);
   }
 };
-const bladeOut = f => !!(f.bladeOut || (f.mv && f.mv.blade && (f.st === 'atk' || f.st === 'cine')));
+const bladeOut = f => !!(f.bladeOut || (f.mv && f.mv.blade && (f.st === 'atk' || f.st === 'cine')) || (f.st === 'thr' && f.thr && f.thr.blade));
 
 LX.zen = {
   head(H) {
@@ -3208,6 +3276,7 @@ const SPIRIT = {
 };
 function spiritOf(f) {
   const C = G.cine; if (C && C.att === f && C.spirit) return [C.spirit, 1];
+  if (f.st === 'thr' && f.thr && f.thr.spirit) return [f.thr.spirit, f.thr.spA || 1];
   const m = f.mv; if (f.st === 'atk' && m && m.spirit && f.mt >= m.su - 6 && f.mt <= m.lastEnd + 9) return [m.spirit, clamp((f.mt - (m.su - 7)) / 5, 0, 1) * clamp((m.lastEnd + 10 - f.mt) / 6, 0, 1)];
   return null;
 }
@@ -3681,6 +3750,146 @@ const WINS = {};
     if (t === 68) ring(f.x, 8, f.el[2], 90, 22);
     return p;
   };
+}
+// ---------- throws, part 1: KAI, JUNO, GRAVE, ONYX, RAZ, ZEN ----------
+const THROWS = {};
+const thrDef = (key, S) => { THROWS[key] = CHARS[key].thr = mkThrow(S); CHARS[key].list.push([S.title, 'LP + LK, or GRAB', 'Throw. ' + S.note]); };
+{
+  const Z = POSES, burst = (x, y, el, n = 10, up = 2) => { for (let i = 0; i < n; i++) glow(x + rnd(-14, 14), y + rnd(-10, 10), el[1 + (i & 1)], rnd(8, 15), 14 + rnd(10), rnd(-2, 2), rnd(1, 4) + up); };
+  Object.assign(Z, {
+    // KAI: collar grip, leg reap, fist up, fist down
+    kT1: P(14, 2, [78, 96, 70, 92], [38, 8, -22, -44]), kT2: P(4, 0, [84, 98, 74, 92], [78, 34, -8, -30]), kT3: P(40, 12, [48, 58, 40, 52], [-26, -58, 26, -18]),
+    kT4: P(-8, -6, [156, 204, 30, 104], [36, 0, -26, -48]), kT5: P(50, 18, [30, 14, -44, 50], [82, -22, 16, -72]),
+    // a body held up off the floor, and one folded over a blow
+    vHang: P(-4, 22, [8, 16, -10, -2], [12, 2, -10, -4]), vFold: P(34, 26, [30, 62, 20, 52], [26, -8, -8, -36]), vBent: P(16, 18, [24, 70, 10, 56], [26, -4, -10, -38]),
+    // JUNO: hands on the shoulders, one step up the body, a second, then a backflip kick off the chin
+    jT1: P(10, 0, [98, 102, 90, 98], [34, 6, -18, -42]), jT2: P(-4, -4, [104, 112, 96, 106], [98, 58, 20, -34], 0, 60), jT3: P(-22, -8, [84, 124, 74, 116], [112, 78, 76, 16], 0, 44),
+    jT4: P(-6, -14, [-120, -150, -140, -165], [4, 0, 70, -50], 74, 40), jT5: P(30, 10, [40, 100, 30, 90], [100, -40, 90, -50], 190, 34), jT6: P(20, 6, [30, 110, 20, 100], [80, -30, 60, -50], 320, 40),
+    jT7: P(22, 4, [30, 120, 50, 120], [70, -30, 30, -74]),
+    // GRAVE: one hand round the throat, the arm goes up, then all of it comes down
+    gT1: P(10, 0, [92, 96, 28, 100], [36, 6, -22, -44]), gT2: P(-10, -10, [140, 148, 20, 92], [34, 2, -28, -48]), gT3: P(56, 22, [44, 34, -10, 70], [82, -24, 26, -70]),
+    // ONYX: one hand on the collar, the other behind his back until it is needed
+    oT1: P(6, 0, [-22, -58, 94, 98], [28, 4, -14, -38]), oT2: P(-4, -4, [-14, 78, 114, 112], [28, 2, -16, -40]), oT3: P(30, 6, [90, 90, 26, 100], [46, 10, -26, -46]), oT4: P(14, 2, [84, 80, -22, -58], [36, 6, -20, -42]), oT5: P(2, -4, [-22, -58, -22, -58], [22, 2, -12, -30]),
+    // RAZ: the pommel into the stomach, then the blade comes out going upward
+    rT1: P(14, 2, [42, 112, 86, 96], [34, 6, -20, -44]), rT2: P(34, 8, [64, 84, 70, 110], [44, 10, -26, -46]), rT3: P(26, 6, [-10, 100, 20, 120], [70, -22, 30, -66]), rT4: P(-16, -10, [164, 178, -34, 26], [52, -4, 8, -40]),
+    rT5: P(4, 0, [120, 150, -20, 40], [30, 4, -16, -40]),
+    // ZEN: an arm round the neck, two hooks under the ribs, then the overhand
+    zT1: P(8, 2, [92, 100, -34, 66], [36, 6, -20, -44]), zT2: P(20, 6, [90, 98, 58, 100], [40, 8, -24, -46]), zT3: P(-12, -2, [-44, 62, 50, 132], [30, 2, -22, -46]), zT4: P(38, 8, [86, 58, -6, 118], [46, 12, -26, -46])
+  });
+  // KAI: sweeps the leg out from under them, then drives a burning fist straight down
+  thrDef('kai', { name: 'TILE BREAKER', title: 'Tile Breaker', note: 'Reaps the leg, then punches straight down. They bounce up in front of you.', len: 25, rec: 23,
+    a: [[0, { p: 'kT1', o: 1 }], [4, { p: 'kT2', o: 1 }], [9, { p: 'kT3', o: 1 }], [15, { p: 'kT4' }], [22, { p: 'kT5', r: 0.8 }], [40, { p: 'crouch' }]],
+    v: [[0, { p: 'hitH', x: 46, y: THR_STAND, g: 1 }], [8, { p: 'hitH', x: 44 }], [15, { p: 'down', x: 60, y: 14, g: 0, rot: 90, e: 'in' }]],
+    hits: [[9, (f, d, T) => { thrHit(f, d, T, { w: 0.25, st: 0, y: 30, stop: 2 }); }], [15, (f, d) => { Snd.land(); dust(d.x, 0, 5); }], [20, () => Snd.whoosh(2)]],
+    out: { vx: 4.4, vy: 7.6, slam: 2, stop: 10, fx: (f, d) => { burst(d.x, 30, f.el, 14, 3); ring(d.x, 24, f.el[1], 110, 14); } } });
+
+  // JUNO: runs two steps up their body and backflips off the chin
+  thrDef('juno', { name: 'THUNDER STEP', title: 'Thunder Step', note: 'Two steps up their body and a backflip kick off the chin. Knocks them well away.', len: 15, rec: 22,
+    a: [[0, { p: 'jT1', o: 1 }], [3, { p: 'jT2', o: 1, x: 10, y: 0 }], [7, { p: 'jT3', o: 1, x: 22, y: 50, e: 'out' }], [12, { p: 'jT3', x: 26, y: 86, e: 'out' }], [14, { p: 'jT4', x: 24, y: 96, r: 0.8 }], [20, { p: 'jT5', x: 6, y: 118, e: 'out' }],
+      [28, { p: 'jT6', x: -22, y: 70 }], [35, { p: 'jT7', x: -38, y: 0, e: 'in' }]],
+    v: [[0, { p: 'hitH', x: 46, y: THR_STAND, g: 1 }], [7, { p: 'hitH', x: 50, rot: 6 }], [12, { p: 'hitH', x: 56, rot: 12 }], [15, { p: 'hitH', x: 60, rot: 20 }]],
+    hits: [[7, (f, d, T) => { thrHit(f, d, T, { w: 0.2, st: 0, y: 70, stop: 2 }); }], [12, (f, d, T) => { thrHit(f, d, T, { w: 0.2, st: 0, y: 112, stop: 2 }); }]],
+    out: { vx: 5.4, vy: 6.6, stop: 9, fx: (f, d, T, hy) => { for (let i = 0; i < 4; i++) bolt(d.x, hy + 60, d.x + rnd(-80, 80), hy + 60 + rnd(-70, 90), f.el[1 + (i & 1)], 8, 3); ring(d.x, hy + 60, f.el[1], 90, 12); Snd.zap(); } } });
+
+  // GRAVE: lifts them by the throat with one arm and brings them down on the back of their head
+  thrDef('grave', { name: 'HEADSTONE', title: 'Headstone', note: 'One-armed lift by the throat, then straight into the floor. They stay at your feet.', len: 31, rec: 20,
+    a: [[0, { p: 'gT1', o: 2 }], [6, { p: 'gT2', o: 2, r: 0.3 }], [25, { p: 'gT3', o: 2, r: 0.75 }], [48, { p: 'crouch' }]],
+    v: [[0, { p: 'hitH', x: 46, y: THR_STAND, g: 1 }], [5, { p: 'vHang', x: 46 }], [15, { p: 'vHang', x: 46, y: 148, g: 0, rot: -8, e: 'out' }], [24, { p: 'vHang', x: 46, y: 152, rot: -4 }], [31, { p: 'down', x: 66, y: 14, rot: 90, e: 'in' }]],
+    hits: [[6, () => Snd.whoosh(2)], [24, () => Snd.whoosh(2)]],
+    out: { vx: 1.6, vy: 6.6, slam: 3, stop: 12, fx: (f, d) => { rocks(d.x, 8, 10, f.el[3]); crack(d.x, 0.8); ring(d.x, 20, '#ffffff', 150, 16); Snd.boom(); } } });
+
+  // ONYX: holds them up by the collar, opens the other hand in front of their chest and lets the dragon out
+  thrDef('onyx', { name: "DRAGON'S DISMISSAL", title: "Dragon's Dismissal", note: 'Lifts them by the collar and blasts them away with an open palm. Sends them the furthest.', len: 26, rec: 23,
+    a: [[0, { p: 'oT1' }], [5, { p: 'oT2', o: 2, r: 0.3 }], [22, { p: 'oT3', o: 2, r: 0.85 }], [32, { p: 'oT4', o: 2, r: 0.2 }], [42, { p: 'oT5', r: 0.2 }]],
+    v: [[0, { p: 'hitH', x: 46, y: THR_STAND, g: 1 }], [5, { p: 'vHang', x: 46 }], [12, { p: 'vHang', x: 48, y: 108, g: 0, rot: -6, e: 'out' }], [22, { p: 'vHang', x: 48, y: 110 }], [26, { p: 'vFold', x: 56, y: 110, rot: 10 }]],
+    hits: [[8, (f, d, T) => { fxCharge(T.x0 + T.dir * 20, 96, f.el, 20); Snd.charge(); }], [16, (f, d, T) => { fxCharge(T.x0 + T.dir * 20, 96, f.el, 28); }]],
+    out: { vx: 8.6, vy: 5.6, stop: 11, quiet: 1, fx: (f, d, T, hy) => { const x = d.x - T.dir * 18, y = hy + 34; ring(x, y, '#ffffff', 150, 16); ring(x, y, f.el[1], 100, 14); glow(x, y, f.el[1], 90, 12); fxPush({ k: 'lines', x, y, life: 16, col: f.el[1] });
+      for (let i = 0; i < 16; i++) glow(x + T.dir * rnd(0, 30), y + rnd(-16, 16), f.el[1 + (i & 1)], rnd(10, 20), 16 + rnd(10), T.dir * rnd(5, 13), rnd(-2, 2)); sparks(x, y, 18, f.el, 12); Snd.fire(); Snd.boom(); } } });
+
+  // RAZ: pommel to the stomach, then the draw itself is the cut
+  thrDef('raz', { name: 'CRESCENT PARTING', title: 'Crescent Parting', note: 'Pommel to the stomach, then a rising draw cut. Sends them up and over.', len: 20, rec: 29,
+    a: [[0, { p: 'rT1', o: 2 }], [4, { p: 'rT2', r: 0.8 }], [10, { p: 'rT3', r: 0.4 }], [18, { p: 'rT4', blade: 1, r: 0.9 }], [34, { p: 'rT5', blade: 1, r: 0.25 }], [42, { p: 'rT5', r: 0.3 }]],
+    v: [[0, { p: 'hitH', x: 46, y: THR_STAND, g: 1 }], [5, { p: 'vBent', x: 62 }], [18, { p: 'vBent', x: 68 }], [20, { p: 'hitH', x: 68, y: THR_STAND + 8, rot: 16 }]],
+    hits: [[5, (f, d, T) => { thrHit(f, d, T, { w: 0.3, st: 1, y: 96 }); }], [17, () => Snd.whoosh(2)]],
+    out: { vx: 4.4, vy: 9.4, stop: 10, quiet: 1, fx: (f, d, T, hy) => { slashFx(d.x - T.dir * 40, 20, d.x + T.dir * 26, hy + 110, f.el[1]); slashFx(d.x - T.dir * 30, 30, d.x + T.dir * 34, hy + 96, '#ffffff'); sparks(d.x, hy + 30, 12, f.el, 9); ring(d.x, hy + 30, f.el[1], 80, 12); Snd.slash(); Snd.hit(2); } } });
+
+  // ZEN: ties them up, digs two hooks in under the ribs, lets go and throws the overhand
+  thrDef('zen', { name: 'CLINCH BREAKER', title: 'Clinch Breaker', note: 'Two body hooks in the clinch, then an overhand that spins them away.', len: 30, rec: 19,
+    a: [[0, { p: 'zT1' }], [5, { p: 'zT2', r: 0.85 }], [10, { p: 'zT1', r: 0.4 }], [14, { p: 'zT2', r: 0.85 }], [20, { p: 'zT3', r: 0.4 }], [28, { p: 'zT4', r: 0.9 }], [44, { p: 'zT4', r: 0.3 }]],
+    v: [[0, { p: 'hitH', x: 46, y: THR_STAND, g: 1 }], [4, { p: 'vBent', x: 66 }], [20, { p: 'vBent', x: 68 }], [24, { p: 'dizzy', x: 64 }], [30, { p: 'hitH', x: 62, rot: 8 }]],
+    hits: [[6, (f, d, T) => { thrHit(f, d, T, { w: 0.2, st: 1, x: 54, y: 100 }); }], [15, (f, d, T) => { thrHit(f, d, T, { w: 0.2, st: 1, x: 54, y: 100 }); }], [26, () => Snd.whoosh(2)]],
+    out: { vx: 6.2, vy: 5.4, stop: 10, fx: (f, d, T, hy) => { for (let i = 0; i < 3; i++) bolt(d.x, hy + 70, d.x + T.dir * rnd(20, 90), hy + 70 + rnd(-60, 60), f.el[1 + (i & 1)], 8, 3); ring(d.x, hy + 66, f.el[1], 90, 12); Snd.zap(); } } });
+}
+// ---------- throws, part 2: TYRONE, AXEL, SALLY, JASON, RIMA, KIRA ----------
+{
+  const Z = POSES, FL = [12, 4, -4, -8];
+  Object.assign(Z, {
+    // TYRONE: both hands behind the neck, knee, knee, shove, front kick
+    tT1: P(16, 2, [100, 112, 94, 108], [34, 6, -20, -44]), tT2: P(-12, -4, [84, 104, 78, 100], [106, -12, -6, -20]), tT3: P(22, 4, [92, 92, 86, 90], [42, 12, -24, -44]),
+    tT4: P(-6, 0, [40, 130, 60, 130], [98, -22, -4, -14]), tT5: P(-24, -4, [20, 120, 60, 120], [94, 92, -4, -12]),
+    // AXEL: clamps the head, raises the arm like a crane, and the other arm goes off like a piston
+    aT1: P(2, 0, [96, 96, 0, 4], [8, 0, -8, 0]), aT2: P(-2, 0, [126, 126, 0, 4], [8, 0, -8, 0]), aT3: P(-6, 0, [126, 126, -70, 20], [8, 0, -8, 0]), aT4: P(10, 0, [126, 126, 88, 90], [14, 0, -10, -4]),
+    aT5: P(4, 0, [60, 60, 88, 90], [10, 0, -8, 0]),
+    // SALLY: a hand held high, a turn for her partner, then the leg
+    sT1: P(-2, -4, [128, 158, -50, -80], [16, 2, -8, -14]), sT2: P(-6, -8, [156, 176, -64, -92], [6, 0, -4, -2]), sT3: P(10, 0, [60, 120, -64, -92], [20, -30, -30, -70]),
+    sT4: P(-34, -10, [-60, -20, 70, 100], [134, 130, 2, -6]), sT5: P(-8, -4, [150, 204, -64, -92], [60, 20, -4, -8]),
+    vSpin: P(8, 10, [160, 176, -70, -96], [12, 2, -10, -4]),
+    // JASON: a fistful of collar, the pistol across the jaw, then the muzzle against the chest
+    jaT1: P(12, 2, [30, 124, 92, 98], [34, 6, -18, -42]), jaT2: P(-6, -4, [150, 208, 92, 98], [32, 4, -20, -44]), jaT3: P(26, 6, [80, 44, 60, 100], [40, 10, -24, -46]),
+    jaT4: P(12, 2, [86, 90, -10, 80], [36, 6, -20, -44]), jaT5: P(-8, -4, [100, 116, -10, 80], [30, 2, -22, -46]),
+    // RIMA: gets underneath them and comes up like a ram
+    riT1: P(14, 2, [82, 98, 74, 94], [36, 6, -20, -44]), riT2: P(62, 34, [30, 70, 20, 60], [84, -28, 40, -74]), riT3: P(-22, -26, [152, 172, 140, 162], [32, 2, -26, -46]),
+    // KIRA: never touches them
+    kiT1: P(-6, -4, [118, 138, -10, 6], FL, 0, 92), kiT2: P(14, 10, [58, 44, -10, 6], FL, 0, 88), kiT3: P(-8, -10, [150, 168, -10, 6], FL, 0, 96)
+  });
+
+  // TYRONE: the clinch every kickboxer fears, then a front kick to make room
+  thrDef('tyrone', { name: 'PLUM AND KNEE', title: 'Plum and Knee', note: 'Two knees in the clinch, a shove, and a front kick that sends them away low.', len: 31, rec: 18,
+    a: [[0, { p: 'tT1', o: 1 }], [6, { p: 'tT2', o: 1, r: 0.85 }], [11, { p: 'tT1', o: 1, r: 0.4 }], [15, { p: 'tT2', o: 1, r: 0.85 }], [20, { p: 'tT3', o: 1, r: 0.6 }], [25, { p: 'tT4', r: 0.6 }], [30, { p: 'tT5', r: 0.9 }], [46, { p: 'tT4', r: 0.3 }]],
+    v: [[0, { p: 'hitH', x: 46, y: THR_STAND, g: 1 }], [4, { p: 'vFold', x: 62 }], [19, { p: 'vFold', x: 62 }], [24, { p: 'hitH', x: 70 }], [31, { p: 'hitL', x: 72, rot: 6 }]],
+    hits: [[7, (f, d, T) => { thrHit(f, d, T, { w: 0.2, st: 1, x: 44, y: 92 }); }], [16, (f, d, T) => { thrHit(f, d, T, { w: 0.2, st: 1, x: 44, y: 92 }); }], [29, () => Snd.whoosh(2)]],
+    out: { vx: 7.6, vy: 5, stop: 9, fx: (f, d, T, hy) => { for (let i = 0; i < 10; i++) glow(d.x + rnd(-10, 10), hy + rnd(0, 40), f.el[1 + (i & 1)], rnd(8, 14), 14 + rnd(8), T.dir * rnd(2, 7), rnd(0, 4)); } } });
+
+  // AXEL: lifts them by the head on one arm and lets the other arm fire
+  thrDef('axel', { name: 'PISTON EJECT', title: 'Piston Eject', note: 'Hoists them by the head on one arm and fires the other into their body.', len: 25, rec: 27,
+    a: [[0, { p: 'aT1', o: 2, r: 0.9 }], [5, { p: 'aT2', o: 2, r: 0.22 }], [15, { p: 'aT3', o: 2, r: 0.5 }], [24, { p: 'aT4', o: 2, r: 1 }], [34, { p: 'aT5', r: 0.25 }]],
+    v: [[0, { p: 'hitH', x: 46, y: THR_STAND, g: 1 }], [5, { p: 'vHang', x: 54 }], [14, { p: 'vHang', x: 54, y: 116, g: 0, rot: -4, e: 'lin' }], [24, { p: 'vHang', x: 54, y: 116 }], [25, { p: 'vFold', x: 58, y: 116, rot: 8 }]],
+    hits: [[5, () => Snd.charge()], [15, (f, d, T) => { Snd.tone(300, 900, 0.3, 0.14, 'square'); fxCharge(T.x0 - T.dir * 20, 110, f.el, 16); }]],
+    out: { vx: 7.2, vy: 7, stop: 11, fx: (f, d, T, hy) => { const x = d.x - T.dir * 16, y = hy + 22; ring(x, y, '#ffffff', 120, 14); for (let i = 0; i < 4; i++) bolt(x, y, x + rnd(-70, 70), y + rnd(-60, 60), f.el[1 + (i & 1)], 7, 2); sparks(x, y, 16, f.el, 11); fxPush({ k: 'lines', x, y, life: 14, col: f.el[1] }); Snd.boom(); } } });
+
+  // SALLY: turns them under her arm like a partner, twice, and finishes the phrase with a kick
+  thrDef('sally', { name: 'PAS DE DEUX', title: 'Pas de Deux', note: 'Spins them under her arm like a dance partner, then kicks them off the floor.', len: 28, rec: 25, room: 110,
+    a: [[0, { p: 'sT1', o: 1 }], [4, { p: 'sT2', o: 1, r: 0.4 }], [20, { p: 'sT3', o: 1, r: 0.5 }], [27, { p: 'sT4', r: 0.9 }], [42, { p: 'sT5', r: 0.2 }]],
+    v: [[0, { p: 'hitH', x: 46, y: THR_STAND, g: 1 }], [3, { p: 'vSpin', x: 50, y: THR_STAND + 6 }], ...[5, 9, 13, 17].map(u => [u, { flip: 1 }]), ...[7, 11, 15, 19].map(u => [u, {}]), [21, { p: 'dizzy', x: 56, y: THR_STAND, rot: 6 }], [28, { p: 'hitH', x: 60, rot: 10 }]]
+      .sort((p, q) => p[0] - q[0]),
+    hits: [[4, () => Snd.whoosh(0)], [9, () => Snd.whoosh(0)], [14, () => Snd.whoosh(1)], [25, () => Snd.whoosh(2)]],
+    each: (f, d, T, u) => { if (u < 4 || u > 21) return; const a = u * 1.1; // a ribbon of wind winding up round the partner
+      for (let i = 0; i < 2; i++) glow(d.x + Math.cos(a + i * 3.14) * 38, 14 + (u - 4) * 8 + i * 6, f.el[1 + i], 9, 12, -Math.sin(a + i * 3.14) * 3, 1.5); if (u % 5 === 0) ring(d.x, 10 + (u - 4) * 8, f.el[1], 56, 10); },
+    out: { vx: 6, vy: 7.8, stop: 9, fx: (f, d, T, hy) => { for (let i = 0; i < 3; i++) ring(d.x + T.dir * i * 16, hy + 50, i ? f.el[1] : '#ffffff', 70 + i * 30, 12 + i * 3); for (let i = 0; i < 10; i++) glow(d.x, hy + rnd(10, 80), f.el[1 + (i & 1)], rnd(6, 12), 16 + rnd(8), T.dir * rnd(4, 10), rnd(-1, 3)); } } });
+
+  // JASON: close enough that he does not need to aim
+  thrDef('jason', { name: 'POINT BLANK', title: 'Point Blank', note: 'Pistol-whips them, puts the muzzle on their chest and fires.', len: 23, rec: 19,
+    a: [[0, { p: 'jaT1' }], [4, { p: 'jaT2', r: 0.6 }], [8, { p: 'jaT3', r: 0.9 }], [13, { p: 'jaT4', r: 0.5 }], [23, { p: 'jaT5', r: 0.9 }], [38, { p: 'jaT4', r: 0.2 }]],
+    v: [[0, { p: 'hitH', x: 46, y: THR_STAND, g: 1 }], [8, { p: 'hitH', x: 50 }], [12, { p: 'hitH', x: 58, rot: 10 }], [18, { p: 'dizzy', x: 62, rot: 2 }], [23, { p: 'vFold', x: 64 }]],
+    hits: [[9, (f, d, T) => { thrHit(f, d, T, { w: 0.25, st: 1, x: 44, y: 148 }); }], [16, () => Snd.tone(1800, 1500, 0.04, 0.2, 'square')]],
+    out: { vx: 7.8, vy: 5.4, stop: 10, quiet: 1, fx: (f, d, T, hy) => { const x = d.x - T.dir * 14, y = hy + 36; glow(x, y, '#ffffff', 70, 6); glow(x, y, f.el[1], 44, 10); sparks(x, y, 16, f.el, 13); ring(x, y, '#ffffff', 80, 8);
+      for (let i = 0; i < 6; i++) glow(x - T.dir * 10, y + rnd(-6, 6), '#b9b2a6', rnd(8, 14), 22 + rnd(10), -T.dir * rnd(0, 2), rnd(1, 3)); Snd.burst(2200, 0.8, 0.08, 0.9); Snd.hit(2); } } });
+
+  // RIMA: drops under their arms and tosses them with the ram's horns
+  thrDef('rima', { name: "RAM'S TOSS", title: "Ram's Toss", note: 'Ducks under them and tosses them straight up with the ram. They come down a long time later.', len: 17, rec: 33,
+    a: [[0, { p: 'riT1', o: 1 }], [4, { p: 'riT2', o: 1, r: 0.5, x: 0 }], [10, { p: 'riT2', o: 1, sp: 'ram', x: 12 }], [12, { p: 'riT3', o: 1, sp: 'ram', r: 0.9, x: 14 }], [26, { p: 'riT3', o: 1, r: 0.3, x: 14 }], [40, { p: 'riT1', x: 14 }]],
+    v: [[0, { p: 'hitH', x: 46, y: THR_STAND, g: 1 }], [10, { p: 'hitH', x: 48 }], [12, { p: 'vFold', x: 50, y: 92, g: 0 }], [17, { p: 'vFold', x: 56, y: 176, rot: -150, e: 'out' }]],
+    hits: [[4, () => Snd.whoosh(1)], [12, (f, d, T) => { thrHit(f, d, T, { w: 0.3, st: 2, x: 40, y: 104 }); Snd.roar(); }]],
+    out: { vx: 3.8, vy: 8.6, stop: 4, quiet: 1 } });
+
+  // KIRA: lifts them without touching them, puts them down, and then it happens again
+  thrDef('kira', { name: 'SECOND TIME', title: 'Second Time', note: 'Lifts them without touching them and slams them down. Then it happens again.', len: 31, rec: 19, room: 120,
+    a: [[0, { p: 'kiT1', o: 1 }], [5, { p: 'kiT3', o: 1, r: 0.3 }], [15, { p: 'kiT2', o: 1, r: 0.8 }], [20, { p: 'kiT3', o: 1, r: 0.4 }], [27, { p: 'kiT2', o: 1, r: 0.85 }], [46, { p: 'kiT1', o: 1, r: 0.2 }]],
+    v: [[0, { p: 'hitH', x: 46, y: THR_STAND, g: 1 }], [4, { p: 'vHang', x: 52 }], [13, { p: 'vHang', x: 76, y: 156, g: 0, rot: -12, e: 'out' }], [15, { p: 'vHang', x: 76, y: 158, rot: -12 }], [19, { p: 'down', x: 76, y: 14, rot: 90, e: 'in' }],
+      [20, { p: 'down', x: 76, y: 14, rot: 90 }], [26, { p: 'down', x: 76, y: 132, rot: 96, e: 'out' }], [27, { p: 'down', x: 76, y: 134, rot: 96 }], [31, { p: 'down', x: 76, y: 14, rot: 90, e: 'in' }]],
+    hits: [[4, (f, d) => { Snd.charge(); ring(d.x, 20, f.el[2], 70, 16); }], [8, (f, d) => { ring(d.x, d.y, f.el[1], 60, 12); }],
+      [19, (f, d, T) => { thrHit(f, d, T, { w: 0.4, st: 2, y: 20, stop: 6, quiet: 1 }); Snd.slam(); fxGround(d.x, 2, f.el); }], [21, (f, d) => { d.ghostT = 16; Snd.whistle(); ring(d.x, 30, f.el[2], 80, 14); }]],
+    out: { vx: 2.4, vy: 6.2, slam: 2, stop: 11, fx: (f, d) => { ring(d.x, 20, f.el[1], 130, 16); glow(d.x, 30, f.el[3], 90, 12); } } });
 }
 // ---------- every fighter's animation set (ONYX has his own file) ----------
 {
@@ -4729,7 +4938,7 @@ function boot(d) {
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(rebuildStages).catch(() => { });
   requestAnimationFrame(loop);
 }
-window.FT = { NET, MODES, touch, rawLocal, art: { drawArt, mockF, big, px, menuBG, rays, setStage, ctx }, dbgPose: f => { f.pose = targetPose(f); postFx(f); return f.pose; }, attract: startAttract, G, step, tick, CHARS, SEL, goScene, startSelect, startMatch, render, keys, DIFF, POSES, SC, MI, HI: () => HI, press: () => { startFlag = true; } };
+window.FT = { NET, MODES, touch, rawLocal, art: { drawArt, mockF, big, px, menuBG, rays, setStage, ctx }, dbgPose: f => { f.pose = targetPose(f); postFx(f); return f.pose; }, attract: startAttract, G, step, tick, CHARS, SEL, goScene, startSelect, startMatch, render, keys, DIFF, POSES, SC, MI, HI: () => HI, press: () => { startFlag = true; }, KEYMAP, bounds };
 const hotR = window.claude && window.claude.hot;
 if (hotR && hotR.snapshot) hotR.snapshot(() => ({ sel: { mode: SEL.mode, p: SEL.p, diff: SEL.diff, crt: SEL.crt, voice: Voice.on, music: Snd.musicOn, sound: Snd.on }, keys: KEYMAP }));
 if (hotR && hotR.ready) hotR.ready(boot); else boot((hotR && hotR.data) || {});
@@ -5366,7 +5575,7 @@ if (onlineShown()) { const at = MODES.findIndex(m => m[0] === 'settings'); MODES
 // (some mobile networks block it), inputs are passed through the database instead: slower, but it still plays.
 const iceCfg = () => ({ iceServers: window.FT_ICE || [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }] });
 const roomCode = () => { const A = 'BCDFGHJKLMNPQRSTVWXZ'; let s = ''; for (let i = 0; i < 4; i++) s += A[(Math.random() * A.length) | 0]; return s; };
-const BUILD = '2706905293';
+const BUILD = '3407086769';
 const seat = () => ({ uid: ON.user.uid, name: ON.me.name, v: BUILD });
 const iceDone = pc => new Promise(res => { if (pc.iceGatheringState === 'complete') return res(); const t = setTimeout(res, 2500); pc.addEventListener('icegatheringstatechange', () => { if (pc.iceGatheringState === 'complete') { clearTimeout(t); res(); } }); });
 
