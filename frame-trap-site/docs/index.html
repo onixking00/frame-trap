@@ -295,7 +295,7 @@ body.touch #touchBox { order: -1; }
           <div><dt><b>COUNTER</b>Hit their startup</dt><dd>+20% damage and 2 extra frames of hitstun.</dd></div>
           <div><dt><b>PUNISH</b>Hit their recovery</dt><dd>+20% damage and 4 extra frames, enough to link moves that normally don't combo.</dd></div>
           <div><dt><b>CANCEL</b>Normal → special → super</dt><dd>Punches, st.LK and cr.MK cancel into specials on hit or block. Any special, EX or not, cancels into a super or the Ultimate, on the ground or in the air. Projectile specials cancel in the moment after the shot leaves, hit or not.</dd></div>
-          <div><dt><b>LAUNCH</b>cr.HP starts an air combo</dt><dd>Crouching heavy punch launches, and when it hits you leap up after them by yourself (hold back to stay on the ground, or cancel into a special instead). In the air, light and medium hits knock them away from you and chain light → medium → heavy; a heavy punch or kick smashes them straight down for a hard knockdown.</dd></div>
+          <div><dt><b>LAUNCH</b>cr.HP starts an air combo</dt><dd>Crouching heavy punch launches, and when it hits you leap up after them by yourself (hold back to stay on the ground, or cancel into a special instead). In the air, light and medium hits knock them away from you and chain light → medium → heavy; a heavy punch or kick smashes them straight down. The first smash of a combo bounces them off the floor so you can keep hitting them; a second one slams them down for good.</dd></div>
           <div><dt><b>JUGGLE</b>Eight points</dt><dd>A launched body can be hit by anything. Normals and EX cost 1 point, specials 2, supers 3. At 8 it falls free. Some air moves bounce it off the floor.</dd></div>
           <div><dt><b>RUSH</b>Tap →→ on contact</dt><dd>Spend 1 bar to cancel a cancellable normal into a fast dash. The next hit gets 4 extra frames, so heavy → rush → heavy combos.</dd></div>
           <div><dt><b>STUN</b>The bar under your health</dt><dd>Taking hits fills it; it drains when you are left alone. Fill it and you are knocked down and get up dizzy. Mash buttons and wiggle the stick to recover sooner.</dd></div>
@@ -1660,7 +1660,9 @@ function stepState(f) { // returns true when the new state should also run this 
       f.stun--; return false;
     case 'lnc':
       if (airPhys(f)) {
-        if (f.bounce && f.hp > 0) { const bv = Math.max(1, f.bounce); f.bounce = 0; f.y = 0.01; f.vy = 8.4 * bv; f.vx *= 0.5; fxGround(f.x, 1, opp(f).el); Snd.slam(); G.shake = Math.max(G.shake, 7); f.sq = 0.8; return false; }
+        if (f.bounce && f.hp > 0) { const bv = Math.max(1, f.bounce); f.bounce = 0; f.y = 0.01; f.vy = 8.4 * bv; f.vx *= 0.5; fxGround(f.x, 1, opp(f).el); Snd.slam(); G.shake = Math.max(G.shake, 7); f.sq = 0.8;
+          if (f.spiked) { f.spiked = 0; G.shake = Math.max(G.shake, 12); fxGround(f.x, 3, opp(f).el); ring(f.x, 10, '#ffffff', 170, 18); Snd.boom(); } // smashed into the floor and thrown back up
+          return false; }
         if (f.hp <= 0) { f.st = 'ko'; f.t = 0; Snd.slam(); G.shake = 8; dust(f.x, 0, 10); }
         else if (f.reset) { endCombo(f); setIdle(f); f.thrInv = 4; }
         else { f.st = 'down'; f.t = 0; f.vx = 0; Snd.slam(); G.shake = Math.max(G.shake, 5); dust(f.x, 0, 10); f.quick = f.ai ? chance(0.35) : f.dy < 0 || f.pD < 12;
@@ -1796,7 +1798,7 @@ function say(f, text, col) { G.msgs.push({ i: f.i, text, col, t: 0 }); if (G.msg
 function endCombo(f) {
   const o = opp(f);
   if (f.combo >= 4 && o && G.state === 'fight') say(o, f.combo >= 13 ? 'UNREAL' : f.combo >= 9 ? 'BRUTAL' : f.combo >= 6 ? 'SAVAGE' : 'NICE', '#f2ecdf');
-  f.combo = 0; f.cdmg = 0; f.jugN = 0; f.canJug = 0; f.bounce = 0; f.aerial = 0; f.spiked = 0;
+  f.combo = 0; f.cdmg = 0; f.jugN = 0; f.canJug = 0; f.bounce = 0; f.aerial = 0; f.spiked = 0; f.smashN = 0;
 }
 function fxPush(o) { if (G.fx.length < 560) { o.t = 0; G.fx.push(o); } }
 function spark(x, y, kind, s = 1) { fxPush({ k: kind, x, y, life: 12 + s * 3, s, a: rnd(6.28) }); }
@@ -1993,7 +1995,11 @@ function resolveHit(att, def, h, proj, pt) {
     if (m && m.jc && !proj && !ko) { def.aerial = 1; def.spiked = 0; }
     else if (def.aerial && wasLnc && m && m.normal && m.air && !proj && !ko) {
       const lv = m.btn % 3;
-      if (lv === 2) { def.vx = dir * 0.6; def.vy = -17; def.canJug = 0; def.bounce = 0; def.spiked = 1; def.aerial = 0; att.vy = Math.max(att.vy, 5); say(att, 'SMASH', att.el[1]); G.shake = Math.max(G.shake, 9); G.zk = Math.max(G.zk, 0.07); ring(pt.x, pt.y, '#ffffff', 120, 12); }
+      if (lv === 2) { // the first smash of a combo bounces them off the floor, so the combo can go on; a second one slams them down for good
+        const first = !def.smashN; def.smashN = (def.smashN || 0) + 1;
+        def.vx = dir * 0.6; def.vy = -17; def.canJug = first ? 1 : 0; def.bounce = first ? 1.75 : 0; def.spiked = 1; def.aerial = 0; att.vy = first ? Math.min(att.vy, 1) : Math.max(att.vy, 5);
+        say(att, first ? 'SMASH' : 'SLAM', att.el[1]); G.shake = Math.max(G.shake, 9); G.zk = Math.max(G.zk, 0.07); ring(pt.x, pt.y, '#ffffff', 120, 12);
+      }
       else { def.vx = dir * (lv ? 5.8 : 4.4); def.vy = (lv ? 5.4 : 5.8) * k; att.vx = dir * 0.6; } // they sail away; chaining the next hit carries you after them (startMove)
     }
     if (proj && proj.d.hits > 1 && proj.hits > 0 && !ko) proj.carry = 1;
@@ -5321,7 +5327,7 @@ if (onlineShown()) { const at = MODES.findIndex(m => m[0] === 'settings'); MODES
 // (some mobile networks block it), inputs are passed through the database instead: slower, but it still plays.
 const iceCfg = () => ({ iceServers: window.FT_ICE || [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }] });
 const roomCode = () => { const A = 'BCDFGHJKLMNPQRSTVWXZ'; let s = ''; for (let i = 0; i < 4; i++) s += A[(Math.random() * A.length) | 0]; return s; };
-const BUILD = '1942401137';
+const BUILD = '3385357778';
 const seat = () => ({ uid: ON.user.uid, name: ON.me.name, v: BUILD });
 const iceDone = pc => new Promise(res => { if (pc.iceGatheringState === 'complete') return res(); const t = setTimeout(res, 2500); pc.addEventListener('icegatheringstatechange', () => { if (pc.iceGatheringState === 'complete') { clearTimeout(t); res(); } }); });
 
