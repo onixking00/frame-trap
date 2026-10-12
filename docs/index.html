@@ -147,6 +147,72 @@ body.touch #touchBox { order: -1; }
 #boot small { display: block; margin-top: 10px; font: 400 16px/1.45 var(--body); letter-spacing: 0; text-transform: none; color: var(--mut); max-width: 34em; }
 @media (orientation: portrait) { body.touch #rotate { display: flex; } }
 @media (prefers-reduced-motion: reduce) { .btns button.rdy { animation: none; } }
+
+/* ---- settings drawer: the arcade look ---- */
+#drawer { background: radial-gradient(ellipse 60% 70% at 86% 10%, rgba(176,124,255,.28), transparent 70%), radial-gradient(ellipse 50% 60% at 4% 100%, rgba(53,214,255,.15), transparent 70%), linear-gradient(180deg, #150a28, #08050e 82%); scrollbar-width: thin; scrollbar-color: #5a3fa0 transparent; }
+#drawer:before { content: ""; position: fixed; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none; background: repeating-linear-gradient(115deg, rgba(255,255,255,.03) 0 38px, transparent 38px 76px); }
+#drawer .wrapd { position: relative; z-index: 1; }
+#drawer .bar { background: linear-gradient(180deg, rgba(22,12,40,.98), rgba(11,8,17,.94)); border-bottom: 3px solid transparent; border-image: linear-gradient(90deg, #ffc21a, #b07cff 55%, #35d6ff) 1; backdrop-filter: blur(6px); gap: 14px; }
+#drawer .bar h2 { font-size: 31px; font-style: italic; letter-spacing: .05em; background: linear-gradient(180deg, #fff, #d8c6ff 55%, #8a5cf0); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 2px 0 #120a22) drop-shadow(0 0 10px rgba(176,124,255,.5)); padding-right: 6px; }
+#drawer .bar h2 em { background: linear-gradient(180deg, #fffbe0, #ffc21a 60%, #e8342a); -webkit-background-clip: text; background-clip: text; color: transparent; }
+#drawer .dtabs .btn { display: flex; align-items: center; justify-content: center; gap: 9px; border: 0; background: rgba(38,26,58,.85); color: #cbbde0; min-height: 46px; font-size: 18px; clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px); transition: filter .12s, transform .12s; }
+#drawer .dtabs .btn:hover { filter: brightness(1.3); transform: translateY(-1px); }
+#drawer .dtabs .btn::before { content: ""; width: 20px; height: 20px; flex: none; background: currentColor; -webkit-mask: var(--ic) center / contain no-repeat; mask: var(--ic) center / contain no-repeat; }
+#drawer .dtabs .btn[data-tab=pause] { --ic: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22white%22 stroke=%22white%22 stroke-width=%222%22 stroke-linejoin=%22round%22 stroke-linecap=%22round%22%3E%3Crect x=%226%22 y=%225%22 width=%224%22 height=%2214%22 rx=%221%22 stroke=%22none%22/%3E%3Crect x=%2214%22 y=%225%22 width=%224%22 height=%2214%22 rx=%221%22 stroke=%22none%22/%3E%3C/svg%3E"); } #drawer .dtabs .btn[data-tab=moves] { --ic: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22white%22 stroke=%22white%22 stroke-width=%222%22 stroke-linejoin=%22round%22 stroke-linecap=%22round%22%3E%3Cpath d=%22M13 2L4 14h7l-1 8 9-12h-7z%22 stroke=%22none%22/%3E%3C/svg%3E"); } #drawer .dtabs .btn[data-tab=settings] { --ic: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22white%22 stroke=%22white%22 stroke-width=%222%22 stroke-linejoin=%22round%22 stroke-linecap=%22round%22%3E%3Cpath fill-rule=%22evenodd%22 stroke=%22none%22 d=%22M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6zM10.4 2h3.2l.5 2.6c.6.2 1.2.5 1.7.9l2.5-.9 1.6 2.8-2 1.7c.1.6.1 1.3 0 1.9l2 1.7-1.6 2.8-2.5-.9c-.5.4-1.1.7-1.7.9L13.6 22h-3.2l-.5-2.6c-.6-.2-1.2-.5-1.7-.9l-2.5.9-1.6-2.8 2-1.7a6.4 6.4 0 0 1 0-1.9l-2-1.7 1.6-2.8 2.5.9c.5-.4 1.1-.7 1.7-.9z%22/%3E%3C/svg%3E"); } #drawer .dtabs .btn[data-tab=system] { --ic: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22white%22 stroke=%22white%22 stroke-width=%222%22 stroke-linejoin=%22round%22 stroke-linecap=%22round%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%229%22 fill=%22none%22/%3E%3Cpath d=%22M12 11v6%22 fill=%22none%22/%3E%3Ccircle cx=%2212%22 cy=%227.6%22 r=%221.2%22 stroke=%22none%22/%3E%3C/svg%3E"); }
+#drawer .dtabs .btn[aria-pressed="true"] { background: linear-gradient(180deg, #ffe27a, #ffb41a); color: #20120a; box-shadow: none; filter: drop-shadow(0 0 10px rgba(255,194,26,.5)); }
+#drawer .btn { border-radius: 0; }
+#drawer .btn.go { border: 0; background: linear-gradient(180deg, #ff7a5c, #e8342a); color: #fff; clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px); text-shadow: 0 2px 0 rgba(0,0,0,.35); transition: filter .12s; } #drawer .btn.go:hover { filter: brightness(1.15); }
+#drawer .phead { display: flex; align-items: center; gap: 16px; margin: 4px 0 18px; }
+#drawer .phead i { width: 58px; height: 58px; flex: none; background: linear-gradient(160deg, #ffe27a, #ffb41a); -webkit-mask: var(--ic) center / contain no-repeat; mask: var(--ic) center / contain no-repeat; filter: drop-shadow(0 0 12px rgba(255,194,26,.5)); }
+#drawer .phead.ph-gear i { --ic: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22white%22 stroke=%22white%22 stroke-width=%222%22 stroke-linejoin=%22round%22 stroke-linecap=%22round%22%3E%3Cpath fill-rule=%22evenodd%22 stroke=%22none%22 d=%22M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6zM10.4 2h3.2l.5 2.6c.6.2 1.2.5 1.7.9l2.5-.9 1.6 2.8-2 1.7c.1.6.1 1.3 0 1.9l2 1.7-1.6 2.8-2.5-.9c-.5.4-1.1.7-1.7.9L13.6 22h-3.2l-.5-2.6c-.6-.2-1.2-.5-1.7-.9l-2.5.9-1.6-2.8 2-1.7a6.4 6.4 0 0 1 0-1.9l-2-1.7 1.6-2.8 2.5.9c.5-.4 1.1-.7 1.7-.9z%22/%3E%3C/svg%3E"); } #drawer .phead.ph-sys i { --ic: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22white%22 stroke=%22white%22 stroke-width=%222%22 stroke-linejoin=%22round%22 stroke-linecap=%22round%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%229%22 fill=%22none%22/%3E%3Cpath d=%22M12 11v6%22 fill=%22none%22/%3E%3Ccircle cx=%2212%22 cy=%227.6%22 r=%221.2%22 stroke=%22none%22/%3E%3C/svg%3E"); }
+#drawer .phead.spin i { animation: gSpin 16s linear infinite; } @keyframes gSpin { to { transform: rotate(360deg); } }
+#drawer .phead h2 { font-size: clamp(36px, 7vh, 56px); font-style: italic; letter-spacing: .05em; line-height: .95; background: linear-gradient(180deg, #fff, #d8c6ff 55%, #8a5cf0); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-stroke: 2px #120a22; paint-order: stroke fill; filter: drop-shadow(0 4px 0 #120a22); }
+#drawer .phead p { margin: 4px 0 0; color: #b9a9d0; font: 500 12px/1 var(--mono); letter-spacing: .3em; text-transform: uppercase; }
+#drawer .blk { position: relative; background: linear-gradient(180deg, rgba(40,26,66,.78), rgba(20,13,34,.8)); border-top: 3px solid rgba(255,194,26,.75); padding: 16px 20px 20px; margin-bottom: 18px; clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px); }
+#drawer .blk h3 { display: flex; align-items: center; gap: 10px; font-size: 22px; letter-spacing: .08em; margin-bottom: 14px; }
+#drawer .blk h3::before { content: ""; width: 26px; height: 26px; flex: none; background: var(--hot); -webkit-mask: var(--ic, url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22white%22 stroke=%22white%22 stroke-width=%222%22 stroke-linejoin=%22round%22 stroke-linecap=%22round%22%3E%3Cpath fill-rule=%22evenodd%22 stroke=%22none%22 d=%22M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6zM10.4 2h3.2l.5 2.6c.6.2 1.2.5 1.7.9l2.5-.9 1.6 2.8-2 1.7c.1.6.1 1.3 0 1.9l2 1.7-1.6 2.8-2.5-.9c-.5.4-1.1.7-1.7.9L13.6 22h-3.2l-.5-2.6c-.6-.2-1.2-.5-1.7-.9l-2.5.9-1.6-2.8 2-1.7a6.4 6.4 0 0 1 0-1.9l-2-1.7 1.6-2.8 2.5.9c.5-.4 1.1-.7 1.7-.9z%22/%3E%3C/svg%3E")) center / contain no-repeat; mask: var(--ic, url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22white%22 stroke=%22white%22 stroke-width=%222%22 stroke-linejoin=%22round%22 stroke-linecap=%22round%22%3E%3Cpath fill-rule=%22evenodd%22 stroke=%22none%22 d=%22M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6zM10.4 2h3.2l.5 2.6c.6.2 1.2.5 1.7.9l2.5-.9 1.6 2.8-2 1.7c.1.6.1 1.3 0 1.9l2 1.7-1.6 2.8-2.5-.9c-.5.4-1.1.7-1.7.9L13.6 22h-3.2l-.5-2.6c-.6-.2-1.2-.5-1.7-.9l-2.5.9-1.6-2.8 2-1.7a6.4 6.4 0 0 1 0-1.9l-2-1.7 1.6-2.8 2.5.9c.5-.4 1.1-.7 1.7-.9z%22/%3E%3C/svg%3E")) center / contain no-repeat; }
+#drawer .blk h3::after { content: ""; flex: 1; height: 2px; background: linear-gradient(90deg, rgba(255,194,26,.55), transparent); }
+#drawer [data-ic=snd] h3 { --ic: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22white%22 stroke=%22white%22 stroke-width=%222%22 stroke-linejoin=%22round%22 stroke-linecap=%22round%22%3E%3Cpath d=%22M3 9v6h4l5 4V5L7 9z%22 stroke=%22none%22/%3E%3Cpath d=%22M15.5 8.5a5 5 0 0 1 0 7M18.2 6a8.6 8.6 0 0 1 0 12%22 fill=%22none%22/%3E%3C/svg%3E"); } #drawer [data-ic=touch] h3 { --ic: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22white%22 stroke=%22white%22 stroke-width=%222%22 stroke-linejoin=%22round%22 stroke-linecap=%22round%22%3E%3Cpath d=%22M9 11V5a1.6 1.6 0 0 1 3.2 0v5l5 1.2a2 2 0 0 1 1.5 2.4L18 19a2.4 2.4 0 0 1-2.3 1.8H11a3 3 0 0 1-2.4-1.2L5.5 15a1.5 1.5 0 0 1 2.2-2z%22 fill=%22none%22/%3E%3C/svg%3E"); } #drawer [data-ic=pad] h3 { --ic: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22white%22 stroke=%22white%22 stroke-width=%222%22 stroke-linejoin=%22round%22 stroke-linecap=%22round%22%3E%3Cpath d=%22M7 7h10a5 5 0 0 1 4.8 3.8l.9 3.7a2.6 2.6 0 0 1-4.6 2.2L16 14H8l-2.1 2.7a2.6 2.6 0 0 1-4.6-2.2l.9-3.7A5 5 0 0 1 7 7z%22 fill=%22none%22/%3E%3Cpath d=%22M8 9.5v3M6.5 11h3%22 fill=%22none%22/%3E%3Ccircle cx=%2216%22 cy=%2210%22 r=%221%22 stroke=%22none%22/%3E%3Ccircle cx=%2218%22 cy=%2212%22 r=%221%22 stroke=%22none%22/%3E%3C/svg%3E"); } #drawer [data-ic=key] h3 { --ic: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22white%22 stroke=%22white%22 stroke-width=%222%22 stroke-linejoin=%22round%22 stroke-linecap=%22round%22%3E%3Crect x=%222.5%22 y=%225.5%22 width=%2219%22 height=%2213%22 rx=%222.5%22 fill=%22none%22/%3E%3Cpath d=%22M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M7 14.5h10%22 fill=%22none%22 stroke-width=%222.4%22/%3E%3C/svg%3E"); } #drawer [data-ic=system] h3 { --ic: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22white%22 stroke=%22white%22 stroke-width=%222%22 stroke-linejoin=%22round%22 stroke-linecap=%22round%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%229%22 fill=%22none%22/%3E%3Cpath d=%22M12 11v6%22 fill=%22none%22/%3E%3Ccircle cx=%2212%22 cy=%227.6%22 r=%221.2%22 stroke=%22none%22/%3E%3C/svg%3E"); } #drawer [data-ic=moves] h3 { --ic: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22white%22 stroke=%22white%22 stroke-width=%222%22 stroke-linejoin=%22round%22 stroke-linecap=%22round%22%3E%3Cpath d=%22M13 2L4 14h7l-1 8 9-12h-7z%22 stroke=%22none%22/%3E%3C/svg%3E"); }
+#drawer .opts > .btn, #drawer .opts select { background-color: rgba(8,5,14,.62); border: 1px solid #3a2c52; border-left: 4px solid #3a2c52; transition: border-color .15s, background-color .15s; }
+#drawer .opts > .btn:hover:not(:disabled), #drawer .opts select:hover { border-color: #6a56a0; background-color: rgba(30,20,52,.8); }
+#drawer .opts > .btn:disabled { opacity: .38; }
+#drawer #tab-settings .opts > button.btn[aria-pressed] { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #9a8bb0; }
+#drawer #tab-settings .opts > button.btn[aria-pressed]::after { content: ""; flex: none; width: 50px; height: 26px; border-radius: 13px; background: radial-gradient(circle, #fff 0 9px, transparent 10px) 3px 50% / 20px 20px no-repeat, #3a2c52; transition: background-position .18s, background-color .18s; box-shadow: inset 0 2px 4px rgba(0,0,0,.45); }
+#drawer #tab-settings .opts > button.btn[aria-pressed="true"] { color: #fff; border-color: #3a2c52; border-left-color: var(--cyan); }
+#drawer #tab-settings .opts > button.btn[aria-pressed="true"]::after { background: radial-gradient(circle, #fff 0 9px, transparent 10px) 27px 50% / 20px 20px no-repeat, linear-gradient(90deg, #1fb6ee, #35d6ff); box-shadow: inset 0 2px 4px rgba(0,0,0,.3), 0 0 12px rgba(53,214,255,.5); }
+#drawer .opts select { appearance: none; -webkit-appearance: none; padding-right: 40px; background-image: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 20 20%22%3E%3Cpath d=%22M4 7l6 6 6-6%22 fill=%22none%22 stroke=%22%23ffc21a%22 stroke-width=%222.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; background-size: 14px; font-weight: 600; }
+#drawer .opts select:focus { outline: none; border-color: var(--cyan); border-left-color: var(--cyan); }
+#drawer .opts label { color: #b9a9d0; font: 500 12px/1.2 var(--mono); letter-spacing: .14em; gap: 6px; }
+#drawer .opts label select { font: 600 17px/1.15 var(--body); letter-spacing: 0; text-transform: none; }
+#drawer .opts input[type=checkbox] { width: 22px; height: 22px; }
+#drawer .note { color: #a99bb8; }
+#drawer .keys th, #drawer .keys td { border-top: 0; padding: 5px 8px 5px 8px; }
+#drawer .keys tbody tr:nth-child(even) { background: rgba(255,255,255,.04); }
+#drawer .keys thead th { color: var(--hot); border-bottom: 2px solid rgba(255,194,26,.35); }
+#drawer .key { border-radius: 6px; background: linear-gradient(180deg, #3a2b58, #251a3c); border: 1px solid #52408a; border-bottom-width: 4px; color: #fff; font-weight: 600; box-shadow: 0 2px 0 rgba(0,0,0,.4); transition: transform .08s, border-color .12s; }
+#drawer .key:hover { border-color: var(--hot); transform: translateY(-1px); }
+#drawer .key:active { transform: translateY(2px); border-bottom-width: 2px; }
+#drawer .key.listen { background: #0b0811; border-color: var(--cyan); color: var(--cyan); animation: keyListen .8s ease-in-out infinite; }
+@keyframes keyListen { 50% { box-shadow: 0 0 14px rgba(53,214,255,.8); } }
+#drawer .keybar .btn { width: auto; border: 0; background: #3a1722; color: #ff9a8a; clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
+#drawer .keybar span { color: #b9a9d0; }
+#drawer .pause { position: relative; padding: 22px 26px 24px; background: linear-gradient(180deg, rgba(40,26,66,.82), rgba(20,13,34,.85)); border-top: 4px solid var(--hot); clip-path: polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px); }
+#drawer .pause .ptitle { font-size: 56px; font-style: italic; letter-spacing: .08em; background: linear-gradient(180deg, #fffbe0, #ffc21a 60%, #e8342a); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-stroke: 2px #120a22; paint-order: stroke fill; filter: drop-shadow(0 4px 0 #120a22); }
+#drawer .pause .btn.wide { min-height: 50px; font-size: 18px; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
+#drawer .pause .btn.warn { background: #3a1722; border-color: #3a1722; }
+#drawer .tabs .btn { border: 0; background: rgba(38,26,58,.85); } #drawer .tabs .btn[aria-pressed="true"] { background: linear-gradient(180deg, #ffe27a, #ffb41a); color: #20120a; }
+#drawer .sys > div { padding: 10px 14px; background: rgba(8,5,14,.45); border-left: 4px solid var(--hot); }
+#drawer .sys dt b { font-size: 18px; } #drawer .sys dd { color: #c3b6d6; }
+#drawer .combo th { color: var(--hot); } #drawer .combo tr:nth-child(even) { background: rgba(255,255,255,.035); } #drawer .combo th, #drawer .combo td { padding-left: 8px; }
+@media (max-width: 620px) { #drawer .blk { padding: 14px 14px 16px; } #drawer .dtabs .btn::before { display: none; } #drawer .phead i { width: 42px; height: 42px; } }
+@media (prefers-reduced-motion: reduce) { #drawer .phead.spin i, #drawer .key.listen { animation: none; } }
+/* ---- the menu / pause button ---- */
+#menuBtn { display: flex; align-items: center; justify-content: center; font-size: 0; color: transparent; border: 0; border-radius: 26%; background: radial-gradient(circle at 30% 22%, rgba(176,124,255,.55), rgba(16,9,30,.92) 70%); box-shadow: inset 0 0 0 2px rgba(255,194,26,.78), 0 0 14px rgba(176,124,255,.5), 0 3px 0 rgba(0,0,0,.45); transition: box-shadow .15s, background .15s; }
+#menuBtn:active { background: radial-gradient(circle at 30% 22%, rgba(255,226,122,.9), rgba(255,180,26,.9)); color: transparent; }
+#menuBtn .mi { width: 58%; height: 58%; fill: #ffc21a; filter: drop-shadow(0 2px 0 rgba(0,0,0,.5)); transition: transform .45s cubic-bezier(.3,1.4,.5,1); }
+#menuBtn .mp { display: none; } body.playing #menuBtn .mg { display: none; } body.playing #menuBtn .mp { display: block; }
+body:not(.touch) #menuBtn { opacity: .9; border-width: 0; } body:not(.touch) #menuBtn:hover { box-shadow: inset 0 0 0 2px #ffe27a, 0 0 22px rgba(255,194,26,.65), 0 3px 0 rgba(0,0,0,.45); } #menuBtn:hover .mg { transform: rotate(120deg); }
+body.playing:not(.touch) #menuBtn { opacity: .45; } body.playing:not(.touch) #menuBtn:hover { opacity: 1; }
 </style>
 
 <div id="stage">
@@ -174,7 +240,7 @@ body.touch #touchBox { order: -1; }
       <button type="button" class="ab" data-b="32" style="--x:4;--y:12;--d:16;--c:#ff8a7a" aria-label="Heavy kick">HK</button>
     </div>
   </div>
-  <button type="button" id="menuBtn" aria-label="Menu">II</button>
+  <button type="button" id="menuBtn" aria-label="Menu"><svg class="mi mg" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6zM10.4 2h3.2l.5 2.6c.6.2 1.2.5 1.7.9l2.5-.9 1.6 2.8-2 1.7c.1.6.1 1.3 0 1.9l2 1.7-1.6 2.8-2.5-.9c-.5.4-1.1.7-1.7.9L13.6 22h-3.2l-.5-2.6c-.6-.2-1.2-.5-1.7-.9l-2.5.9-1.6-2.8 2-1.7a6.4 6.4 0 0 1 0-1.9l-2-1.7 1.6-2.8 2.5.9c.5-.4 1.1-.7 1.7-.9z"/></svg><svg class="mi mp" viewBox="0 0 24 24" aria-hidden="true"><rect x="5.5" y="4.5" width="4.4" height="15" rx="1.2"/><rect x="14.1" y="4.5" width="4.4" height="15" rx="1.2"/></svg></button>
   <button type="button" id="startBtn" hidden>START</button>
   <div id="hudEd" hidden>
     <div id="hudBoxes"></div>
@@ -242,9 +308,10 @@ body.touch #touchBox { order: -1; }
   </section>
 
   <section class="tab" id="tab-settings" hidden>
+    <div class="phead spin ph-gear"><i></i><div><h2>Settings</h2><p>Sound &middot; picture &middot; controls</p></div></div>
     <div class="cols">
       <div class="stack">
-        <div class="blk">
+        <div class="blk" data-ic="snd">
           <h3>Sound and picture</h3>
           <div class="opts">
             <button type="button" class="btn" id="musBtn" aria-pressed="true">Music on</button>
@@ -254,7 +321,7 @@ body.touch #touchBox { order: -1; }
             <label class="wide">Picture quality <select id="qualSel"><option value="auto">Auto</option><option value="high">High</option><option value="mid">Medium</option><option value="low">Low</option></select></label>
           </div>
         </div>
-        <div class="blk" id="touchBox">
+        <div class="blk" id="touchBox" data-ic="touch">
           <h3>Touch controls</h3>
           <div class="opts">
             <label class="wide">On-screen stick and buttons <select id="touchSel"><option value="auto">Automatic</option><option value="on">Always show</option><option value="off">Never show</option></select></label>
@@ -264,7 +331,7 @@ body.touch #touchBox { order: -1; }
           </div>
           <p class="note" id="touchNote">Move with a stick that follows your thumb or with a D-pad. Edit button layout lets you drag the stick or D-pad and each button where you want it and resize it. In six-button mode the buttons move and resize as one group.</p>
         </div>
-        <div class="blk">
+        <div class="blk" data-ic="pad">
           <h3>Gamepad</h3>
           <p class="note" id="padSeen" role="status">No gamepad found yet.</p>
           <table class="keys">
@@ -275,7 +342,7 @@ body.touch #touchBox { order: -1; }
           <p class="note">Move with the left stick or the D-pad. The first gamepad you press a button on is player 1 and the next is player 2; both use this layout. Names follow an Xbox pad: A is the bottom button of the four.</p>
         </div>
       </div>
-      <div class="blk">
+      <div class="blk" data-ic="key">
         <h3>Keyboard</h3>
         <table class="keys">
           <thead><tr><th scope="col">Action</th><th scope="col">Player 1</th><th scope="col">Player 2</th></tr></thead>
@@ -288,8 +355,9 @@ body.touch #touchBox { order: -1; }
   </section>
 
   <section class="tab" id="tab-system" hidden>
+    <div class="phead ph-sys"><i></i><div><h2>System</h2><p>How a fight really works</p></div></div>
     <div class="cols">
-      <div class="blk">
+      <div class="blk" data-ic="system">
         <h3>System</h3>
         <dl class="sys">
           <div><dt><b>BLOCK</b>Hold back</dt><dd>Lows need down-back. Jump attacks and the overhead must be blocked standing. Specials chip.</dd></div>
@@ -309,7 +377,7 @@ body.touch #touchBox { order: -1; }
           <div><dt><b>COLORS</b>Five each, and one to earn</dt><dd>After you pick a fighter you pick their colour: left and right to look, then confirm. Every fighter has five. The sixth is Shadow, and you earn it for a fighter by finishing Arcade with them, beating their own shadow at the end. Shadow is not used in online matches.</dd></div>
         </dl>
       </div>
-      <div class="blk">
+      <div class="blk" data-ic="moves">
         <h3>First combos</h3>
         <table class="combo">
           <tr><th scope="row">Anyone</th><td>j.HK, cr.HP, j.LP → j.MP → j.HP (smash)</td></tr>
@@ -5261,7 +5329,18 @@ function modeArt(id, d, col) { // the picture on a mode's card, drawn in the car
     spark(-96, -108, 7, '#d6ffe4', 1); spark(96, 20, 6, '#d6ffe4', 3);
   }
   else if (id === 'online') { ctx.strokeStyle = col[0]; ctx.lineWidth = 3; ctx.globalAlpha *= 0.9; ctx.beginPath(); ctx.arc(0, -22, 78, 0, 7); for (const rx of [28, 56]) ctx.ellipse(0, -22, rx, 78, 0, 0, 7); ctx.moveTo(-78, -22); ctx.lineTo(78, -22); for (const y of [-58, 14]) { ctx.moveTo(-68, y); ctx.lineTo(68, y); } ctx.stroke(); for (const [x, y, c] of [[-44, -52, C_RED], [50, 4, C_CYAN]]) { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, y, 9 + Math.sin(G.frame * 0.12 + x) * 2, 0, 7); ctx.fill(); } }
-  else if (id === 'settings') { ctx.save(); ctx.translate(0, -22); ctx.rotate(G.frame * 0.006); ctx.fillStyle = col[0]; ctx.strokeStyle = INK; ctx.lineWidth = 4; ctx.beginPath(); for (let i = 0; i < 16; i++) { const a = i * Math.PI / 8, r = i % 2 ? 78 : 58; ctx.lineTo(Math.cos(a - 0.14) * r, Math.sin(a - 0.14) * r); ctx.lineTo(Math.cos(a + 0.14) * r, Math.sin(a + 0.14) * r); } ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = col[1]; ctx.beginPath(); ctx.arc(0, 0, 26, 0, 7); ctx.fill(); ctx.stroke(); ctx.restore(); }
+  else if (id === 'settings') { // two meshing gears
+    const gear = (cx, cy, ro, ri, n, rot, c1, c2, hole) => { ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot); ctx.beginPath(); const tw = Math.PI / n * 0.5; for (let i = 0; i < n; i++) { const a = i * 2 * Math.PI / n; ctx.lineTo(Math.cos(a - tw * 1.3) * ri, Math.sin(a - tw * 1.3) * ri); ctx.lineTo(Math.cos(a - tw * 0.72) * ro, Math.sin(a - tw * 0.72) * ro); ctx.lineTo(Math.cos(a + tw * 0.72) * ro, Math.sin(a + tw * 0.72) * ro); ctx.lineTo(Math.cos(a + tw * 1.3) * ri, Math.sin(a + tw * 1.3) * ri); } ctx.closePath(); const g = ctx.createLinearGradient(-ro, -ro, ro, ro); g.addColorStop(0, c1); g.addColorStop(1, c2); ctx.fillStyle = g; ctx.fill(); ol(5);
+      ctx.beginPath(); ctx.arc(0, 0, ri * 0.72, 0, 7); ctx.strokeStyle = 'rgba(10,14,30,.28)'; ctx.lineWidth = 3.5; ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(0, 0, ri * 0.9, -2.6, -1.7); ctx.stroke();
+      for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.arc(Math.cos(k * 2.094 + 0.5) * ri * 0.46, Math.sin(k * 2.094 + 0.5) * ri * 0.46, hole * 0.55, 0, 7); ctx.fillStyle = 'rgba(10,14,30,.5)'; ctx.fill(); }
+      ctx.beginPath(); ctx.arc(0, 0, hole, 0, 7); ctx.fillStyle = '#0e1426'; ctx.fill(); ol(4); ctx.restore(); };
+    const rot = G.frame * 0.011;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.35 + Math.sin(G.frame * 0.07) * 0.08; const hg = ctx.createRadialGradient(10, -30, 10, 10, -30, 140); hg.addColorStop(0, '#6fd0ff'); hg.addColorStop(1, 'rgba(60,120,255,0)'); ctx.fillStyle = hg; ctx.fillRect(-140, -165, 280, 300); ctx.restore();
+    gear(-24, -46, 74, 55, 10, rot, '#eaf1ff', '#7b8fb8', 18);
+    gear(58, 14, 40, 28, 7, -rot * 10 / 7 + Math.PI / 7, '#ffe9a0', '#d08a1a', 10);
+    spark(-98, -118, 7, '#cfeaff', 0); spark(96, -92, 6, '#ffffff', 2); spark(-84, 44, 4, '#cfeaff', 4);
+  }
   else { big('?', 0, 20, 170, [col[0], col[0], '#8a7a66'], 'center', 0); for (let i = 0; i < 4; i++) { ctx.fillStyle = 'rgba(255,255,255,.2)'; ctx.fillRect(-92, -130 + i * 14, 40 + (i * 37) % 50, 6); } }
 }
 SC.mode = {
