@@ -400,7 +400,7 @@ body.playing:not(.touch) #menuBtn { opacity: .45; } body.playing:not(.touch) #me
           <tr><th scope="row">AXEL</th><td>MP → HP, ↓↘→ + HK (Saw Blade Rampage), ↓↘→↓↘→ + P</td></tr>
           <tr><th scope="row">SALLY</th><td>LK → MK → HK, ↓↙← + HK (Gale Screw)</td></tr>
           <tr><th scope="row">SALLY</th><td>↓↘→↓↘→ + K (high launch), cr.HP, j.MK → j.HK (smash)</td></tr>
-          <tr><th scope="row">JASON</th><td>MP → HP, ↓↘→ + MP (Bullet Barrage), ↓↘→↓↘→ + P</td></tr>
+          <tr><th scope="row">JASON</th><td>MP → HP, ↓↘→ + MP (Dagger Strike), ↓↘→↓↘→ + P</td></tr>
           <tr><th scope="row">RIMA</th><td>LP → MP → HP, ↓↘→ + HP (Lion Fist Rush), ↓↘→↓↘→ + P</td></tr>
           <tr><th scope="row">RIMA</th><td>EX ↓↘→ + KK (the viper drags them in), MP → HP, ↓↘→ + HP</td></tr>
           <tr><th scope="row">KIRA</th><td>↓↘→ + LK (Umbra Shot), walk in behind it, MP → HP, ↓↘→ + LP</td></tr>
@@ -1299,14 +1299,11 @@ const C0 = (a, vx, zoom = 1.28) => ({ t: 1, a, v: 'hitH', ax: 0, ay: 0, vx, vy: 
 }
 // ---------- JASON: gun-fu assassin (lead) ----------
 {
-  const c = defChar('jason', { name: 'JASON', tag: 'Gun-fu assassin', el: 'lead', blurb: 'Pistols at range, ninjutsu up close. Controls the whole screen with bullets, grenades and a sniper shot, and his ultimate is a grab you never see.',
+  const c = defChar('jason', { name: 'JASON', tag: 'Gun-fu assassin', el: 'lead', blurb: 'Pistols at range, a dagger up close. Controls the screen with grenades and a sniper shot, grabs you with a dagger strike, and his ultimate is a grab you never see.',
     winPose: 'sheathe', intro: 'introR', stage: 'dock', stats: [3, 3, 5, 3], hp: 990, walk: 3.7, back: 3.0, n: { r: 1.0, d: 1.0 },
     quotes: ['Nothing personal. The contract only had your name on it.', 'I counted my rounds. You did not count yours.', 'You never see the last one. That is the point of it.'],
     ending: ['Dock 9 is empty by sunrise, and so is the envelope.', 'Jason burns the contract, keeps the cap, and for once takes a job nobody is paying for.'],
     pal: [{ skin: '#d9a47c', top: '#5d6b3a', pants: '#2e3440', acc: '#ff9a2a', hair: '#3a2a1c', x: '#16161c' }, { skin: '#d9a47c', top: '#2a3a5c', pants: '#cfc8b6', acc: '#e8342a', hair: '#1a1410', x: '#16161c' }], look: 'jason' });
-  const rc = (su, n, gap) => { const a = [[0, 'aimW'], [su - 2, 'aim']]; for (let i = 0; i < n; i++) a.push([su + i * gap, 'aimR'], [su + i * gap + 2, 'aim']); return a; };
-  const bu = { dmg: 24, hits: 1, y: 112, r: 9, hs: 15, bs: 10, st: 0, sh: 'dart', len: 30, vx: 15, dx: 66 };
-  const bb = (n, d, o) => X({ su: 11, total: 28 + n * 5, noHit: 1, pose: ['aimW', 'aim'], st: 1, anim: rc(11, n, 5), projs: seq(n, 11, 5, () => X(bu, { dmg: d })).map(p => (p.f = p.t, p)) }, o);
   const gt = { su: 16, total: 46, noHit: 1, pose: ['ohW', 'oh'], st: 1 };
   const gr = { dmg: 70, hits: 1, y: 150, r: 10, hs: 20, bs: 14, st: 1, kd: 1, launch: [1.5, 10], boom: 1, sh: 'shell', tumble: 1, col: '#3d4a2a', vy: 8.5, g: 0.5, f: 16, blastOnGround: { dmg: 70, rw: 85, rh: 48, launch: [1.5, 10], st: 2 } };
   const sn = { noHit: 1, pose: ['crouch', 'snipe'], st: 2, laser: 1 };
@@ -1320,8 +1317,13 @@ const C0 = (a, vx, zoom = 1.28) => ({ t: 1, a, v: 'hitH', ax: 0, ay: 0, vx, vy: 
       { t: 1, a: 'aim', v: 'dizzy', ax: 0, ay: 0, vy: 0, zoom: 1.1, do: C => BB.stun(C) }, { t: 12, a: 'sheathe' }, { t: 20, a: 'dashB', back: 300, rate: 0.2 },
       { t: 32, a: 'bbsW', do: C => BB.spawn(C) }, { t: 46, a: 'bbs', zoom: 1.04, do: C => BB.lock(C) },
       { t: 84, a: 'bbsR', n: 10, do: (C, e) => BB.fire(C, e) }, { t: 94, hit: 245, big: 1, flash: 1, v: 'launch', do: C => BB.boom(C) }] } };
+  // Dagger Strike: a command grab. He lunges in with the dagger already drawn; if it catches, the stabs and the rising cut are
+  // scripted with his other throws (see "JASON: DAGGER STRIKE" in the throws section). Light reaches furthest, heavy hits hardest.
+  Object.assign(POSES, { jdW: P(2, 0, [-20, 70, 60, 100], [40, 8, -20, -44]), jd: P(32, 6, [88, 92, 96, 100], [58, 14, -34, -52]) });
+  const dg = { ac: 2, re: 32, st: 2, blade: 1, pose: ['jdW', 'jd'] };
   addSp(c, {
-    barrageL: bb(2, 28), barrageM: bb(3, 25), barrageH: bb(4, 23), barrageX: bb(6, 22, { ex: 1, cost: 100, total: 52 }),
+    daggerL: X(dg, { su: 6, mvx: [[2, 5, 2.4]], grab: { range: 66, dmg: 150, kind: 'cmd', combo: 1 } }), daggerM: X(dg, { su: 7, mvx: [[2, 6, 2.4]], grab: { range: 58, dmg: 165, kind: 'cmd', combo: 1 } }),
+    daggerH: X(dg, { su: 8, mvx: [[2, 7, 2.4]], grab: { range: 50, dmg: 180, kind: 'cmd', combo: 1 } }), daggerX: X(dg, { ex: 1, cost: 100, su: 5, re: 24, mvx: [[1, 4, 2.6]], grab: { range: 72, dmg: 230, kind: 'cmd', combo: 1 } }),
     grenadeL: X(gt, { projs: [X(gr, { vx: 3.5 })] }), grenadeM: X(gt, { projs: [X(gr, { vx: 5.5 })] }), grenadeH: X(gt, { projs: [X(gr, { vx: 7.5 })] }),
     grenadeX: X(gt, { ex: 1, cost: 100, total: 42, projs: [X(gr, { vx: 5.5, dmg: 110, launch: [1, 12], blastOnGround: { dmg: 110, rw: 125, rh: 60, launch: [1, 12], st: 2, big: 1 } })] }),
     snipeL: snipe(24, 110), snipeM: snipe(30, 130), snipeH: snipe(36, 150), snipeX: snipe(18, 150, { ex: 1, cost: 100 }, { launch: [2, 11.5] }),
@@ -1332,10 +1334,10 @@ const C0 = (a, vx, zoom = 1.28) => ({ t: 1, a, v: 'hitH', ax: 0, ay: 0, vx, vy: 
   });
   c.moves['5MP'].tc = { [HP]: '5HP' };
   c.moves.super.projs[0].cm = c.moves.super; // the stun round opens the sequence
-  c.sp = [{ mot: M_QCF, grp: 'P', ids: ['barrageL', 'barrageM', 'barrageH'], ex: 'barrageX' }, { mot: M_QCB, grp: 'P', ids: ['grenadeL', 'grenadeM', 'grenadeH'], ex: 'grenadeX' }, { mot: M_QCF, grp: 'K', ids: ['snipeL', 'snipeM', 'snipeH'], ex: 'snipeX' }];
+  c.sp = [{ mot: M_QCF, grp: 'P', ids: ['daggerL', 'daggerM', 'daggerH'], ex: 'daggerX' }, { mot: M_QCB, grp: 'P', ids: ['grenadeL', 'grenadeM', 'grenadeH'], ex: 'grenadeX' }, { mot: M_QCF, grp: 'K', ids: ['snipeL', 'snipeM', 'snipeH'], ex: 'snipeX' }];
   c.super = { mot: M_QCF2, grp: 'P', id: 'super' }; c.ult = { mot: M_QCB2, grp: 'P', id: 'ult' };
-  c.ai = { fb: ['barrageM', 'grenadeM', 'snipeL'], aa: '2HP', rev: null, cancel: ['barrageM', 'grenadeL', 'barrageH'], safe: 'barrageL', poke: ['5MK', '2MK', '5MP'], rush: 'barrageL', ultRaw: 1 };
-  c.list = [['Bullet Barrage', '↓↘→ + P', 'Two, three or four pistol rounds; six on EX.'], ['Grenade Toss', '↓↙← + P', 'Lobbed grenade: light near, medium mid, heavy far. EX is a much bigger blast.'],
+  c.ai = { fb: ['grenadeM', 'snipeL'], aa: '2HP', rev: null, cancel: ['daggerM', 'grenadeL', 'daggerH', 'snipeL'], safe: 'grenadeL', poke: ['5MK', '2MK', '5MP'], rush: 'grenadeL', grab: ['daggerL', 'daggerM', 'daggerH'], ultRaw: 1 };
+  c.list = [['Dagger Strike', '↓↘→ + P', 'Command grab. Lunges in with the dagger drawn, takes them by the collar and stabs twice before a rising cut. It beats blocking, whiffs against a jump, and unlike other command grabs it links from a normal: cancel a punch into it on hit. Light reaches furthest, heavy hits hardest; the EX stabs three times.'], ['Grenade Toss', '↓↙← + P', 'Lobbed grenade: light near, medium mid, heavy far. EX is a much bigger blast.'],
     ['Heavy Snipe', '↓↘→ + K', 'Takes a knee and lines it up. Slow to fire, almost instant to arrive, and it knocks down.'],
     ['Big Bang Shot', '↓↘→↓↘→ + P', 'Super, 2 bars. A stun round that crosses the screen. If it lands, he shoulders a rocket launcher, locks on and fires.'],
     ['Master Assassin', '↓↙←↓↙← + P', 'Ultimate, 3 bars. A running grab. Guard it or jump it and he is wide open; if it catches you, the screen goes black.'], ['Target combo', 'MP → HP', 'Cancel the HP into a special.']];
@@ -1542,8 +1544,10 @@ for (const k in CHARS) { const c = CHARS[k]; c.walk *= 1.15; c.back *= 1.15; c.p
 // ---------- roster balance ----------
 // dk scales everything a fighter does outside supers and ultimates (those stay in the band above). Set from long runs of
 // CPU-against-CPU rounds so that no fighter wins far more, or far fewer, than half of them.
-const DK = { kai: 0.92, axel: 0.92, tyrone: 0.93, kira: 0.94, onyx: 0.97, rima: 1.08, jason: 1.06, raz: 1.05, sally: 1.03 };
+const DK = { kai: 0.40, axel: 0.40, tyrone: 0.40, kira: 0.40, onyx: 0.40, rima: 0.40, jason: 0.40, raz: 0.40, sally: 0.40, grave: 0.40 }; // rima, jason, raz, sally and grave nerfed (were 1.08, 1.06, 1.05, 1.03 and 1)
 for (const k in DK) if (CHARS[k]) CHARS[k].dk = DK[k];
+const DMG_NERF = 0.8; // every fighter's normals, specials and command grabs deal this share of what they did (1 = no change). Supers and ultimates are not affected.
+for (const k in CHARS) CHARS[k].dk = Math.round((CHARS[k].dk || 1) * DMG_NERF * 1000) / 1000;
 CHARS.axel.hp = 1000; CHARS.tyrone.hp = 1010;   // were 1040 each
 // Supers and ultimates that play as a scripted sequence run slower, so every blow can be read. The quickest flurries
 // (a hit every 4 or 5 frames) are stretched the most, up to 1.6 times; the rest by 1.3. Damage is untouched.
@@ -2363,7 +2367,7 @@ function checkThrows() {
     if (att.mt < m.su || att.mt >= m.su + m.ac) continue;
     const def = opp(att), dx = def.x - att.x;
     if (Math.abs(dx) - att.ch.hw - def.ch.hw > g.range || (Math.abs(dx) > 8 && sign(dx) !== att.face)) continue;
-    const cmb = !g.air && (m.super || m.ult) && def.combo > 0 && !(def.thrInv > 0) && ((def.st === 'hit' && grounded(def)) || (def.st === 'lnc' && def.canJug && !def.reset && def.y < 120)); // a super or ultimate grab also takes them out of hitstun, or out of the air at the end of a juggle
+    const cmb = !g.air && (m.super || m.ult || g.combo) && def.combo > 0 && !(def.thrInv > 0) && ((def.st === 'hit' && grounded(def)) || (def.st === 'lnc' && def.canJug && !def.reset && def.y < 120)); // a super or ultimate grab also takes them out of hitstun, or out of the air at the end of a juggle
     if (g.air ? !(airGrabbable(def) && Math.abs(def.y - att.y) < 100) : !(cmb || throwable(def))) continue;
     if ((m.super || m.ult) && !g.air && def.st === 'idle' && (att.face > 0 ? def.in.r : def.in.l)) { // supers and ultimates can always be guarded, grabs included
       att.hitMask = 1; def.st = 'blk'; def.t = 0; def.stun = 22; def.mv = null; def.crouch = def.in.d ? 1 : 0; def.face = -att.face; def.pvx = att.face * 7; def.hitstop = att.hitstop = 9;
@@ -2378,6 +2382,7 @@ function checkThrows() {
     const T = { kind, dmg: g.dmg * (m.dm || 1) * (m.super || m.ult ? 1 : att.ch.dk || 1) * aiDmg(att), tech: g.tech ? 8 : 0, rel, end: rel + 22, back: kind === 'throw' && att.backThrow, att, def, rot: 0, scale: def.combo ? Math.max(0.4, SCALE[Math.min(def.combo + (cmb ? 1 : 0), 9)]) : 1, base: def.combo, based: def.cdmg };
     const S = kind === 'throw' && att.ch.thr; if (S) { T.S = S; T.rel = T.tech + S.len; T.end = T.rel + S.rec; }
     if (kind === 'air' && g.sx) T.S = g.sx; // an air grab with its own sequence
+    if (kind === 'cmd' && g.sx) { T.S = g.sx; T.rel = T.tech + T.S.len; T.end = T.rel + T.S.rec; } // a command grab with its own scripted throw
     att.st = 'thr'; att.t = 0; att.thr = T; att.mv = null; att.pvx = 0; att.auraOn = null; att.vx = att.vy = 0;
     def.st = 'thrn'; def.t = 0; def.thr = T; def.mv = null; def.pvx = 0; def.vx = def.vy = 0; def.float = 0;
     if (kind !== 'air') { def.y = 0; if (!cmb) { endCombo(def); T.scale = 1; T.base = 0; T.based = 0; } }
@@ -2483,7 +2488,7 @@ const ASSIST = 58, ASSIST_BIG = 90;
 function comboAssist(f, d, m) {
   if (!d || d.st !== 'hit' || !grounded(d) || !grounded(f) || m.air) return;
   d.pvx *= 0.25; f.pvx *= 0.25;
-  const big = !!(m.super || m.ult), h = m.hits[0], g = m.grab, dir = f.face;
+  const big = !!(m.super || m.ult || (m.grab && m.grab.combo)), h = m.hits[0], g = m.grab, dir = f.face; // a grab flagged combo (Dagger Strike) is held to the same standard as a super grab
   const gap = (d.x - f.x) * dir - d.ch.hw + Math.abs(d.pvx) * 5;          // from your feet to the near edge of them, once they stop sliding
   if (gap < 0 || (!g && !(h && h.box)) || (g && (!big || g.air))) return;
   const reach = g ? f.ch.hw + g.range : h.box[0] + h.box[2], su = g ? m.su : h.su, last = su + ((g ? m.ac : h.ac) || 1) - 1;
@@ -3492,7 +3497,15 @@ LX.jason = {
     if (f.open) return;
     if (f.st === 'atk' && f.mv && f.mv.laser && f.mt < f.mv.su) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.35 + ((G.frame >> 1) & 1) * 0.35; ctx.strokeStyle = '#ff3030'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(J.ha[0] + J.fx * 24 * s, J.ha[1] - 9 * s); ctx.lineTo(J.ha[0] + J.fx * 1100, J.ha[1] - 9 * s); ctx.stroke(); ctx.restore(); }
     const an = Math.atan2(J.ha[1] - J.ea[1], J.ha[0] - J.ea[0]);
-    ctx.save(); ctx.translate(J.ha[0], J.ha[1]); ctx.rotate(an); ctx.scale(s, s * J.fx); ctx.fillStyle = D.white ? '#fff' : '#1a1a22'; ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
+    ctx.save(); ctx.translate(J.ha[0], J.ha[1]); ctx.rotate(an); ctx.scale(s, s * J.fx); ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
+    if (bladeOut(f)) { // Dagger Strike: the pistol is holstered and a dagger is in the hand
+      ctx.fillStyle = D.white ? '#fff' : '#e4ebf6'; ctx.beginPath(); ctx.moveTo(11, -4.5); ctx.lineTo(38, -3); ctx.lineTo(51, 0); ctx.lineTo(38, 3); ctx.lineTo(11, 4.5); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = 'rgba(120,135,160,.75)'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(42, 0); ctx.stroke(); ctx.strokeStyle = INK; ctx.lineWidth = 2.5;
+      ctx.fillStyle = D.white ? '#fff' : '#8a8f9c'; ctx.beginPath(); ctx.rect(7, -8, 4, 16); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = D.white ? '#fff' : '#1a1a22'; ctx.beginPath(); ctx.rect(-6, -3.5, 13, 7); ctx.fill(); ctx.stroke(); ctx.fillStyle = D.col('acc'); ctx.fillRect(-3, -2, 3, 4);
+      ctx.restore(); return;
+    }
+    ctx.fillStyle = D.white ? '#fff' : '#1a1a22';
     ctx.beginPath(); ctx.rect(2, -13, 25, 7); ctx.fill(); ctx.stroke(); ctx.fillStyle = D.white ? '#fff' : '#8a8f9c'; ctx.fillRect(22, -12, 5, 5); ctx.fillStyle = D.col('acc'); ctx.fillRect(5, -12, 3, 5);
     ctx.restore();
   }
@@ -4333,6 +4346,32 @@ const thrDef = (key, S) => { THROWS[key] = CHARS[key].thr = mkThrow(S); CHARS[ke
     hits: [[9, (f, d, T) => { thrHit(f, d, T, { w: 0.25, st: 1, x: 44, y: 148 }); }], [16, () => Snd.tone(1800, 1500, 0.04, 0.2, 'square')]],
     out: { vx: 7.8, vy: 5.4, stop: 10, quiet: 1, fx: (f, d, T, hy) => { const x = d.x - T.dir * 14, y = hy + 36; glow(x, y, '#ffffff', 70, 6); glow(x, y, f.el[1], 44, 10); sparks(x, y, 16, f.el, 13); ring(x, y, '#ffffff', 80, 8);
       for (let i = 0; i < 6; i++) glow(x - T.dir * 10, y + rnd(-6, 6), '#b9b2a6', rnd(8, 14), 22 + rnd(10), -T.dir * rnd(0, 2), rnd(1, 3)); Snd.burst(2200, 0.8, 0.08, 0.9); Snd.hit(2); } } });
+
+  // JASON: DAGGER STRIKE. The command grab, not his LP + LK throw. Collar in one hand, dagger in the other: stab, stab, then a rising cut.
+  // (EX: a third stab and a harder finish.) Each of the four moves gets its own copy of the script.
+  Object.assign(Z, {
+    jdT1: P(14, 2, [40, 112, 92, 98], [38, 6, -20, -44]), jdT2: P(28, 4, [90, 94, 92, 98], [46, 10, -26, -46]), jdT3: P(-8, -4, [-26, 56, 92, 98], [34, 4, -22, -46]),
+    jdT4: P(-16, -8, [158, 176, 20, 70], [52, -6, -20, -44]), jdT5: P(6, 0, [74, 104, 34, 120], [38, 6, -20, -44])
+  });
+  const daggerScript = (n, w, rec, out) => {
+    const a = [[0, { p: 'jdT1', blade: 1 }]], v = [[0, { p: 'hitH', x: 46, y: THR_STAND, g: 1 }]], hits = [], gap = n > 2 ? 7 : 8;
+    for (let i = 0; i < n; i++) {
+      const u = 4 + i * gap;
+      a.push([u, { p: 'jdT2', blade: 1, r: 0.9 }], [u + 4, { p: 'jdT1', blade: 1, r: 0.4 }]);
+      v.push([u, { p: 'vBent', x: i & 1 ? 62 : 58 }], [u + 4, { p: 'vFold', x: 56 }]);
+      hits.push([u, (f, d, T) => { const [x, y] = thrHit(f, d, T, { w, st: 1, x: 52, y: 84 + (i & 1) * 18 }); slashFx(x - T.dir * 16, y + 14, x + T.dir * 16, y - 14, i & 1 ? f.el[1] : '#ffffff'); Snd.slash(); }]);
+    }
+    const wind = 4 + (n - 1) * gap + 5, cut = wind + 5, len = cut + 1;
+    a.push([wind, { p: 'jdT3', blade: 1, r: 0.4 }], [cut, { p: 'jdT4', blade: 1, r: 0.95 }], [len + 14, { p: 'jdT5', r: 0.3 }]);
+    v.push([wind, { p: 'vFold', x: 58 }], [len, { p: 'hitH', x: 64, y: THR_STAND + 8, rot: 16 }]);
+    hits.push([wind + 1, () => Snd.whoosh(2)]);
+    return mkThrow({ len, rec, a, v, hits, out });
+  };
+  const dagOut = o => ({ vx: o.vx, vy: o.vy, stop: o.stop, quiet: 1, fx: (f, d, T, hy) => {
+    slashFx(d.x - T.dir * 44, hy + 8, d.x + T.dir * 30, hy + 122, f.el[1]); slashFx(d.x - T.dir * 30, hy + 18, d.x + T.dir * 38, hy + 106, '#ffffff');
+    sparks(d.x, hy + 40, o.sp, f.el, 10); ring(d.x, hy + 40, f.el[1], o.ring, 12); Snd.slash(); Snd.hit(2); } });
+  for (const id of ['daggerL', 'daggerM', 'daggerH']) CHARS.jason.moves[id].grab.sx = daggerScript(2, 0.2, 22, dagOut({ vx: 5.2, vy: 9, stop: 10, sp: 12, ring: 80 }));
+  CHARS.jason.moves.daggerX.grab.sx = daggerScript(3, 0.17, 18, dagOut({ vx: 6.2, vy: 10.6, stop: 12, sp: 20, ring: 110 }));
 
   // RIMA: drops under their arms and tosses them with the ram's horns
   thrDef('rima', { name: "RAM'S TOSS", title: "Ram's Toss", note: 'Ducks under them and tosses them straight up with the ram. They come down a long time later.', len: 17, rec: 33,
