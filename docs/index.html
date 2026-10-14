@@ -913,9 +913,9 @@ EL.volt.kind = EL.thunder.kind = EL.tech.kind = 'volt'; EL.earth.kind = EL.dark.
     ending: ['The rooftop is quiet again.', 'Kai ties his headband tighter and starts the next thousand reps.'],
     pal: [{ skin: '#e6b08a', top: '#f3eee2', pants: '#f3eee2', acc: '#d8322a', hair: '#2a1c18' }, { skin: '#e6b08a', top: '#3a4a6b', pants: '#3a4a6b', acc: '#f0c040', hair: '#2a1c18' }], look: 'band' });
   const fb = { su: 14, total: 47, noHit: 1, pose: ['fbW', 'fb'], st: 1 };
-  const pj = { dmg: 60, hits: 1, y: 112, r: 22, hs: 22, bs: 16, st: 1 };
+  const pj = { dmg: 60, hits: 1, y: 112, r: 22, hs: 22, bs: 16, st: 1, sh: 'ember' };
   const afb = { air: 1, su: 12, total: 34, noHit: 1, pose: ['afbW', 'afb'], st: 1, landRec: 6, drive: { f: 11, vx: -1.6, vy: 3.4, float: 0 } };
-  const apj = { dmg: 55, hits: 1, y: 62, rel: 1, r: 20, hs: 20, bs: 15, st: 1 };
+  const apj = { dmg: 55, hits: 1, y: 62, rel: 1, r: 20, hs: 20, bs: 15, st: 1, sh: 'ember' };
   const dp = { ac: 12, re: 0, st: 2, kd: 1, box: [4, 70, 62, 115], pose: ['dpW', 'dp'], trail: 'ha', aura: 'ha' };
   const sp = { ac: 3, re: 16, st: 1, box: [8, 70, 88, 50], pose: ['hkW', 'spin'], spin: 1, push: 2, trail: 'fa', aura: 'fa' };
   const asp = { air: 1, ac: 3, st: 1, box: [-10, 10, 100, 60], pose: ['jump', 'spin'], spin: 1, landRec: 8, trail: 'fa', aura: 'fa', lv: 'M' };
@@ -1069,9 +1069,9 @@ EL.volt.kind = EL.thunder.kind = EL.tech.kind = 'volt'; EL.earth.kind = EL.dark.
   const fh = (a, b) => [{ su: 9, ac: 3, dmg: a }, { su: 16, ac: 3, dmg: a }, { su: 23, ac: 3, dmg: a }, { su: 34, ac: 4, dmg: b, st: 2 }];
   // Dragon Shot: a golden energy ball breathed from the mouth; the EX version bursts for three hits and launches
   const shot = { su: 15, total: 48, noHit: 1, pose: ['breathW', 'breath'], st: 1, anim: [[0, 'breathW'], [12, 'breath']] };
-  const spj = { dmg: 60, hits: 1, y: 128, r: 22, hs: 22, bs: 16, st: 1 };
+  const spj = { dmg: 60, hits: 1, y: 128, r: 22, hs: 22, bs: 16, st: 1, sh: 'dragon' };
   const ashot = { air: 1, su: 12, total: 34, noHit: 1, pose: ['breathW', 'breath'], st: 1, landRec: 6, drive: { f: 11, vx: -1.6, vy: 3.4, float: 0 }, anim: [[0, 'breathW'], [9, 'breath']] };
-  const apj = { dmg: 55, hits: 1, y: 96, rel: 1, r: 20, hs: 20, bs: 15, st: 1 };
+  const apj = { dmg: 55, hits: 1, y: 96, rel: 1, r: 20, hs: 20, bs: 15, st: 1, sh: 'dragon' };
   // Dragon Rage: eight blows, an uppercut into the air, eight more up there, then a ground pound
   const rage = [{ t: 1, a: 'flA', v: 'hitH', ax: 0, ay: 0, vx: 62, vy: 0, zoom: 1.28 }];
   for (let i = 0; i < 7; i++) rage.push({ t: 6 + i * 5, a: i % 2 ? 'flA' : 'flB', v: i % 2 ? 'hitH' : 'hitL', hit: 14, vx: 62 + i });
@@ -1337,7 +1337,7 @@ const C0 = (a, vx, zoom = 1.28) => ({ t: 1, a, v: 'hitH', ax: 0, ay: 0, vx, vy: 
   c.sp = [{ mot: M_QCF, grp: 'P', ids: ['daggerL', 'daggerM', 'daggerH'], ex: 'daggerX' }, { mot: M_QCB, grp: 'P', ids: ['grenadeL', 'grenadeM', 'grenadeH'], ex: 'grenadeX' }, { mot: M_QCF, grp: 'K', ids: ['snipeL', 'snipeM', 'snipeH'], ex: 'snipeX' }];
   c.super = { mot: M_QCF2, grp: 'P', id: 'super' }; c.ult = { mot: M_QCB2, grp: 'P', id: 'ult' };
   c.ai = { fb: ['grenadeM', 'snipeL'], aa: '2HP', rev: null, cancel: ['daggerM', 'grenadeL', 'daggerH', 'snipeL'], safe: 'grenadeL', poke: ['5MK', '2MK', '5MP'], rush: 'grenadeL', grab: ['daggerL', 'daggerM', 'daggerH'], ultRaw: 1 };
-  c.list = [['Dagger Strike', '↓↘→ + P', 'Command grab. Lunges in with the dagger drawn, takes them by the collar and stabs twice before a rising cut. It beats blocking, whiffs against a jump, and unlike other command grabs it links from a normal: cancel a punch into it on hit. Light reaches furthest, heavy hits hardest; the EX stabs three times.'], ['Grenade Toss', '↓↙← + P', 'Lobbed grenade: light near, medium mid, heavy far. EX is a much bigger blast.'],
+  c.list = [['Dagger Strike', '↓↘→ + P', 'Command grab. Lunges in with the dagger drawn, takes them by the collar and stabs twice before a rising cut. It beats blocking, whiffs against a jump, and unlike other command grabs it links from a normal: cancel a punch into it on hit. Light reaches furthest, heavy hits hardest. The EX is a different move: he sheathes the dagger, heaves them overhead and slams them into the floor. They bounce high and can be juggled.'], ['Grenade Toss', '↓↙← + P', 'Lobbed grenade: light near, medium mid, heavy far. EX is a much bigger blast.'],
     ['Heavy Snipe', '↓↘→ + K', 'Takes a knee and lines it up. Slow to fire, almost instant to arrive, and it knocks down.'],
     ['Big Bang Shot', '↓↘→↓↘→ + P', 'Super, 2 bars. A stun round that crosses the screen. If it lands, he shoulders a rocket launcher, locks on and fires.'],
     ['Master Assassin', '↓↙←↓↙← + P', 'Ultimate, 3 bars. A running grab. Guard it or jump it and he is wide open; if it catches you, the screen goes black.'], ['Target combo', 'MP → HP', 'Cancel the HP into a special.']];
@@ -1542,12 +1542,30 @@ for (const k in DM) for (const id in DM[k]) if (CHARS[k] && CHARS[k].moves[id]) 
 for (const k in CHARS) { const c = CHARS[k]; c.walk *= 1.15; c.back *= 1.15; c.pre = Math.max(3, c.pre - 1); c.dash = Math.max(13, c.dash - 2); }
 
 // ---------- roster balance ----------
-// dk scales everything a fighter does outside supers and ultimates (those stay in the band above). Set from long runs of
-// CPU-against-CPU rounds so that no fighter wins far more, or far fewer, than half of them.
-const DK = { kai: 0.40, axel: 0.40, tyrone: 0.40, kira: 0.40, onyx: 0.40, rima: 0.40, jason: 0.40, raz: 0.40, sally: 0.40, grave: 0.40 }; // rima, jason, raz, sally and grave nerfed (were 1.08, 1.06, 1.05, 1.03 and 1)
+// Damage is balanced against Street Fighter's proportions, scaled to this game's 1000-health bar (SF's 10,000 / 10):
+//   normals   light : medium : heavy  =  30 : 60 : 90        (SF 300 : 600 : 800-900)
+//   throw     120                                            (SF 1200)
+//   fireball  ~60, uppercut 100-140, command grab 150-250    (SF 500-700, 1000-1400, 1500-2500)
+//   combos    each hit after the first is scaled down by SCALE above, like SF's combo scaling
+// dk is the one pace dial for everything a fighter does outside supers and ultimates. All twelve use the same value, so
+// no one hits harder than anyone else just by being picked (Juno and Zen were missing from this list and ran at 2.5x).
+// Differences between fighters come only from their own moves: normals through n.d, specials through BAL below.
+const DK = { kai: 0.40, juno: 0.40, grave: 0.40, onyx: 0.40, raz: 0.40, zen: 0.40, tyrone: 0.40, axel: 0.40, sally: 0.40, jason: 0.40, rima: 0.40, kira: 0.40 };
 for (const k in DK) if (CHARS[k]) CHARS[k].dk = DK[k];
-const DMG_NERF = 0.8; // every fighter's normals, specials and command grabs deal this share of what they did (1 = no change). Supers and ultimates are not affected.
+const DMG_NERF = 0.8; // global pace: every fighter's normals, specials and command grabs deal this share of the base numbers (1 = full SF pace). Supers and ultimates are not affected.
 for (const k in CHARS) CHARS[k].dk = Math.round((CHARS[k].dk || 1) * DMG_NERF * 1000) / 1000;
+// BAL trims individual specials that sat outside the band their kind sits in across the roster. Measured as LP, MP, then
+// the move, against a 1000-health fighter: melee specials land at 49 / 53 / 57 (light / medium / heavy) and 62 for the EX,
+// projectiles at 46 and 57 for the EX, give or take 10 percent. Only moves outside that band are listed.
+const BAL = {
+  juno: { lanceX: 1.21, palmL: 1.06, palmM: 1.11, palmX: 1.09, alanceX: 1.09, apalmL: 1.06, apalmM: 1.11, apalmH: 1.08, apalmX: 1.15 },
+  grave: { bullL: 0.94, buttL: 0.77, buttM: 0.85, buttH: 0.91, buttX: 0.88, adropL: 0.73, adropM: 0.76, adropH: 0.77, adropX: 0.77 },
+  raz: { kunaiL: 1.15, akunaiL: 1.15 },
+  tyrone: { blazeL: 0.82, blazeM: 0.86, blazeH: 0.86 },
+  jason: { snipeL: 0.89, snipeM: 0.89, snipeH: 0.88 },
+  rima: { viperH: 1.1, viperX: 1.17 },
+};
+for (const k in BAL) for (const id in BAL[k]) if (CHARS[k] && CHARS[k].moves[id]) CHARS[k].moves[id].dm = (CHARS[k].moves[id].dm || 1) * BAL[k][id];
 CHARS.axel.hp = 1000; CHARS.tyrone.hp = 1010;   // were 1040 each
 // Supers and ultimates that play as a scripted sequence run slower, so every blow can be read. The quickest flurries
 // (a hit every 4 or 5 frames) are stretched the most, up to 1.6 times; the rest by 1.3. Damage is untouched.
@@ -2561,6 +2579,7 @@ function thrOut(f, d, T) {
   if (o.slam) { d.y = 0.01; Snd.slam(); fxGround(d.x, o.slam, f.el); fxHit(d.x, 24, 2, f.el, 0); G.shake = Math.max(G.shake, 6 + o.slam * 3); }
   else { d.y = Math.max(0.01, hy - 62 * s); if (d.pose) d.pose[11] = (hy - d.y) / s; // the hips stay where they were while the freeze holds
     if (!o.quiet) { Snd.hit(2); fxHit(d.x, hy + 10, 2, f.el, 0); } G.shake = Math.max(G.shake, 7); }
+  if (o.jug) { d.canJug = 1; d.reset = 0; } // a slam that bounces them leaves the body open to a juggle
   if (o.fx) o.fx(f, d, T, hy);
 }
 function thrPose(f, PZ) {
@@ -4371,7 +4390,16 @@ const thrDef = (key, S) => { THROWS[key] = CHARS[key].thr = mkThrow(S); CHARS[ke
     slashFx(d.x - T.dir * 44, hy + 8, d.x + T.dir * 30, hy + 122, f.el[1]); slashFx(d.x - T.dir * 30, hy + 18, d.x + T.dir * 38, hy + 106, '#ffffff');
     sparks(d.x, hy + 40, o.sp, f.el, 10); ring(d.x, hy + 40, f.el[1], o.ring, 12); Snd.slash(); Snd.hit(2); } });
   for (const id of ['daggerL', 'daggerM', 'daggerH']) CHARS.jason.moves[id].grab.sx = daggerScript(2, 0.2, 22, dagOut({ vx: 5.2, vy: 9, stop: 10, sp: 12, ring: 80 }));
-  CHARS.jason.moves.daggerX.grab.sx = daggerScript(3, 0.17, 18, dagOut({ vx: 6.2, vy: 10.6, stop: 12, sp: 20, ring: 110 }));
+  // EX, Dagger Strike Slam: the dagger goes back in the sheath. He hauls them up by the collar and belt, heaves them overhead
+  // and drives them into the floor. They bounce high and stay open, so he can juggle them off the rebound.
+  Object.assign(Z, {
+    jsT1: P(16, 2, [76, 102, 68, 98], [40, 8, -22, -44]), jsT2: P(-10, -8, [160, 198, 150, 192], [30, 0, -28, -46]), jsT3: P(50, 16, [96, 64, 88, 58], [56, 8, -28, -50]) });
+  CHARS.jason.moves.daggerX.grab.sx = mkThrow({ len: 24, rec: 20,
+    a: [[0, { p: 'jdT1', blade: 1 }], [4, { p: 'jsT1' }], [10, { p: 'jsT2', r: 0.9, x: 2 }], [17, { p: 'jsT2', x: 4 }], [22, { p: 'jsT3', r: 0.95, x: 10, e: 'in' }], [46, { p: 'crouch', x: 6 }]],
+    v: [[0, { p: 'hitH', x: 46, y: THR_STAND, g: 1 }], [4, { p: 'hitH', x: 44 }], [11, { p: 'launch', x: 16, y: 150, rot: 110, e: 'out' }], [17, { p: 'launch', x: 12, y: 178, rot: 168 }], [22, { p: 'down', x: 66, y: 14, rot: 90, e: 'in' }]],
+    hits: [[4, (f, d, T) => { thrHit(f, d, T, { w: 0.12, st: 1, x: 40, y: 96, stop: 3 }); }], [9, () => Snd.whoosh(2)], [17, () => Snd.whoosh(1)],
+      [22, (f, d, T) => { thrHit(f, d, T, { w: 0.4, st: 2, x: 66, y: 24, stop: 5 }); Snd.slam(); fxGround(d.x, 2, f.el); }]],
+    out: { vx: 1.4, vy: 13, slam: 3, stop: 12, jug: 1, fx: (f, d) => { ring(d.x, 24, f.el[1], 150, 14); ring(d.x, 24, '#ffffff', 90, 10); sparks(d.x, 30, 18, f.el, 12); } } });
 
   // RIMA: drops under their arms and tosses them with the ram's horns
   thrDef('rima', { name: "RAM'S TOSS", title: "Ram's Toss", note: 'Ducks under them and tosses them straight up with the ram. They come down a long time later.', len: 17, rec: 33,
@@ -4673,6 +4701,43 @@ function drawProjs() {
       ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.fillStyle = '#fffbe0'; ctx.strokeStyle = el[2]; ctx.lineWidth = 3;                                 // the glove
       ctx.beginPath(); ctx.moveTo(-20, -9); ctx.lineTo(-2, -15); ctx.quadraticCurveTo(15, -16, 16, -5); ctx.lineTo(16, 7); ctx.quadraticCurveTo(15, 16, 0, 15); ctx.lineTo(-20, 10); ctx.closePath(); ctx.fill(); ctx.stroke();
       ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-2, 15); ctx.quadraticCurveTo(-13, 21, -14, 10); ctx.stroke(); ctx.beginPath(); ctx.moveTo(8, -13); ctx.lineTo(8, 13); ctx.moveTo(-20, -9); ctx.lineTo(-20, 10); ctx.stroke();
+      ctx.restore(); continue;
+    }
+    if (p.d.sh === 'ember') { // Ember Shot: a comet of living flame. Layered tongues stream behind a pointed head, a white-hot core and a spinning ring
+      const an = Math.atan2(-p.vy, p.vx), big = p.d.hits > 1 ? 1.22 : 1, R = r * (p.t < 4 ? 0.55 + p.t * 0.11 : 1) * big, t = p.t, flipY = Math.abs(p.vx) >= Math.abs(p.vy) && p.vx < 0 ? -1 : 1;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(an); ctx.scale(1, flipY); ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.8; ctx.drawImage(glowSprite(el[2]), -R * 2.9, -R * 2.2, R * 4.4, R * 4.4);
+      const tongue = (len, w, ph, c, al) => { const sw = Math.sin(t * 0.55 + ph) * R * 0.5, ln = len * (1 + Math.sin(t * 0.4 + ph * 1.7) * 0.16);
+        ctx.globalAlpha = al; ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(R * 0.3, -w); ctx.bezierCurveTo(-ln * 0.25, -w * 1.5 + sw * 0.3, -ln * 0.6, sw * 0.9 - w * 0.3, -ln, sw * 1.4);
+        ctx.bezierCurveTo(-ln * 0.6, sw * 0.9 + w * 0.3, -ln * 0.25, w * 1.5 + sw * 0.3, R * 0.3, w); ctx.closePath(); ctx.fill(); };
+      for (const [len, w, ph, c, a] of [[3.8, 0.85, 0, el[3], 0.55], [3.3, 0.75, 2.1, el[3], 0.5], [3.5, 0.75, 4.2, el[3], 0.5], [2.9, 0.64, 1, el[2], 0.75], [2.7, 0.6, 3.1, el[2], 0.75], [3, 0.58, 5.2, el[2], 0.7], [2.1, 0.44, 0.5, el[1], 0.9], [2, 0.4, 2.6, el[1], 0.9]]) tongue(R * len, R * w, ph, c, a);
+      const head = k => { ctx.beginPath(); ctx.moveTo(R * 1.55 * k, 0); ctx.bezierCurveTo(R * 0.9 * k, -R * 0.9 * k, -R * 0.2 * k, -R * 0.95 * k, -R * 0.7 * k, -R * 0.22 * k); ctx.lineTo(-R * 0.7 * k, R * 0.22 * k); ctx.bezierCurveTo(-R * 0.2 * k, R * 0.95 * k, R * 0.9 * k, R * 0.9 * k, R * 1.55 * k, 0); ctx.closePath(); ctx.fill(); };
+      ctx.globalAlpha = 1; ctx.fillStyle = el[2]; head(1); ctx.fillStyle = el[1]; head(0.76); ctx.fillStyle = '#fff1c4'; head(0.36);
+      ctx.strokeStyle = '#fff4c8'; ctx.lineWidth = 2.2; ctx.lineCap = 'round'; for (let i = 0; i < 2; i++) { ctx.globalAlpha = 0.9 - i * 0.35; ctx.beginPath(); ctx.arc(R * 0.15, 0, R * (1.02 + i * 0.22), t * 0.5 + i * 3.1, t * 0.5 + i * 3.1 + 2.1); ctx.stroke(); }
+      ctx.restore(); continue;
+    }
+    if (p.d.sh === 'dragon') { // Dragon Shot: a golden dragon of light. A horned head in front, a serpentine body of flowing energy behind it
+      const an = Math.atan2(-p.vy, p.vx), big = p.d.hits > 1 ? 1.2 : 1, R = r * (p.t < 4 ? 0.55 + p.t * 0.11 : 1) * big, t = p.t, flipY = Math.abs(p.vx) >= Math.abs(p.vy) && p.vx < 0 ? -1 : 1;
+      const P = (pts, ox = 0) => { ctx.beginPath(); pts.forEach((q, i) => i ? ctx.lineTo(q[0] * R + ox, q[1] * R) : ctx.moveTo(q[0] * R + ox, q[1] * R)); ctx.closePath(); };
+      ctx.save(); ctx.translate(x, y); ctx.rotate(an); ctx.scale(1, flipY); ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.75; ctx.drawImage(glowSprite(el[2]), -R * 3.4, -R * 2.2, R * 4.8, R * 4.4);
+      const N = 20, Ln = R * 4.8, top = [], bot = [], sp = [];
+      for (let i = 0; i <= N; i++) { const s = i / N, bx = R * 0.3 - s * Ln, by = Math.sin(t * 0.42 - s * 6.2) * R * 0.55 * Math.min(1, s * 3), w = R * 0.8 * Math.pow(1 - s, 0.85) + 0.6; top.push([bx, by - w]); bot.push([bx, by + w]); if (i % 3 === 1 && i < N - 2) sp.push([bx, by - w, w]); }
+      const ribbon = (k, c, a) => { ctx.globalAlpha = a; ctx.fillStyle = c; ctx.beginPath(); top.forEach((q, i) => { const m = bot[i], cy = (q[1] + m[1]) / 2; i ? ctx.lineTo(q[0], cy + (q[1] - cy) * k) : ctx.moveTo(q[0], cy + (q[1] - cy) * k); }); for (let i = N; i >= 0; i--) { const q = top[i], m = bot[i], cy = (q[1] + m[1]) / 2; ctx.lineTo(m[0], cy + (m[1] - cy) * k); } ctx.closePath(); ctx.fill(); };
+      ctx.globalCompositeOperation = 'source-over'; ribbon(1.2, '#2b1608', 1); ribbon(1, el[2], 1); ribbon(0.62, el[1], 1); ribbon(0.2, '#fffbe6', 1);
+      ctx.fillStyle = '#2b1608'; for (const [bx, by, w] of sp) { ctx.beginPath(); ctx.moveTo(bx + w * 0.8, by - w * 0.9); ctx.lineTo(bx - w * 0.2, by - w * 1.9); ctx.lineTo(bx - w * 1.0, by - w * 0.9); ctx.closePath(); ctx.fill(); ctx.fillStyle = el[1]; ctx.beginPath(); ctx.moveTo(bx + w * 0.55, by - w * 0.95); ctx.lineTo(bx - w * 0.15, by - w * 1.6); ctx.lineTo(bx - w * 0.7, by - w * 0.95); ctx.closePath(); ctx.fill(); ctx.fillStyle = '#2b1608'; }
+      ctx.globalCompositeOperation = 'lighter';
+      for (const [ph, len] of [[0, 1.3], [2.3, 1.7], [4.1, 1.1]]) { const sw = Math.sin(t * 0.5 + ph) * R * 0.3; ctx.globalAlpha = 0.6; ctx.strokeStyle = el[1]; ctx.lineWidth = 2.4; ctx.beginPath(); ctx.moveTo(R * 0.1, -R * 0.55 + (ph - 2) * R * 0.1); ctx.quadraticCurveTo(-R * len * 0.7, -R * 1.1 + sw, -R * (len + 1.2), -R * 0.7 + sw * 1.6 + (ph - 2) * R * 0.2); ctx.stroke(); }
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.lineJoin = 'round'; ctx.scale(1.22, 1.22);
+      const gold = ctx.createLinearGradient(0, -R * 0.8, 0, R * 0.7); gold.addColorStop(0, '#fff6c0'); gold.addColorStop(0.5, el[1]); gold.addColorStop(1, el[2]);
+      ctx.fillStyle = INK; ctx.strokeStyle = INK; ctx.lineWidth = 5; for (const h of [[[0.1, -0.5], [-0.95, -1.2], [-0.5, -0.3]], [[-0.2, -0.42], [-1.1, -0.75], [-0.55, -0.15]]]) { P(h); ctx.stroke(); }
+      ctx.fillStyle = el[2]; for (const h of [[[0.1, -0.5], [-0.95, -1.2], [-0.5, -0.3]], [[-0.2, -0.42], [-1.1, -0.75], [-0.55, -0.15]]]) { P(h); ctx.fill(); }
+      const jaw = [[1.3, 0.38], [0.85, 0.62], [0.1, 0.55], [-0.25, 0.2], [0.9, 0.12]], skull = [[1.75, -0.1], [1.3, -0.52], [0.45, -0.65], [-0.15, -0.52], [-0.4, -0.05], [0.4, 0.12], [1.0, 0.0]];
+      ctx.lineWidth = 4.2; ctx.strokeStyle = INK; P(jaw); ctx.stroke(); P(skull); ctx.stroke();
+      ctx.fillStyle = el[2]; P(jaw); ctx.fill(); ctx.fillStyle = gold; P(skull); ctx.fill();
+      ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.95; const mg = ctx.createRadialGradient(R * 1.0, R * 0.16, 0, R * 1.0, R * 0.16, R * 0.5); mg.addColorStop(0, '#ffffff'); mg.addColorStop(0.4, el[1]); mg.addColorStop(1, 'rgba(255,170,40,0)'); ctx.fillStyle = mg; ctx.beginPath(); ctx.arc(R * 1.0, R * 0.16, R * 0.5, 0, 7); ctx.fill();
+      ctx.globalAlpha = 1; ctx.fillStyle = '#ffffff'; P([[0.62, -0.38], [0.95, -0.44], [0.78, -0.22]]); ctx.fill();
+      ctx.strokeStyle = '#fff4c8'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.globalAlpha = 0.7; ctx.beginPath(); ctx.arc(R * 0.5, 0, R * 1.25, -0.9 + t * 0.12, 0.2 + t * 0.12); ctx.stroke();
       ctx.restore(); continue;
     }
     if (p.d.sh === 'dart') { // bullet / kunai streak
